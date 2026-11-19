@@ -6,7 +6,7 @@ import { decodeFunctionResult, encodeFunctionData, parseAbiItem, parseUnits, typ
 import { USDG, fetchDesk } from '../src/data/morpho.ts'
 import { vaultNotes } from '../src/data/desk.ts'
 import { publicClient as pc } from '../src/lib/chain.ts'
-import { erc20Abi, readPosition, simulateDeposit, simulateRedeemAll, usdgOverride, vaultAssetIsUsdg } from '../src/lib/vault-tx.ts'
+import { erc20Abi, readPosition, simulateDeposit, simulateRedeemAll, simulateWithdraw, usdgOverride, vaultAssetIsUsdg } from '../src/lib/vault-tx.ts'
 
 const ME: Address = '0x000000000000000000000000000000000000e5c0'
 const amount = parseUnits('100', 6)
@@ -56,6 +56,14 @@ for (const h of holders.slice(0, 15)) {
   if (p.shares === 0n || Number(p.inVault) / 1e6 > w.withdrawableUsd) continue
   const { result } = await simulateRedeemAll(pc, h, wv, p.shares)
   console.log(`ok withdraw ${w.name}: holder ${h.slice(0, 8)}… redeems all shares -> ${Number(result) / 1e6} USDG`)
+  // A part withdrawal by USDG amount returns the shares it burns (18 decimals), not USDG. The dialog once showed that
+  // number as USDG ("you would get 9,890,488,829,576 USDG" for 10 USDG); it must show the amount asked for instead.
+  if (p.inVault >= 2n) {
+    const part = p.inVault / 2n
+    const { result: burned } = await simulateWithdraw(pc, h, wv, part)
+    assert.ok(burned > 0n && burned <= p.shares, `${w.name}: withdraw should return shares burned (${burned})`)
+    assert.ok(burned > part * 10n ** 6n, `${w.name}: withdraw result looks like USDG, not shares (${burned})`)
+  }
   redeemed = true
   break
 }

@@ -18,6 +18,7 @@ import {
   simulateRepay,
   simulateSupplyCollateral,
   simulateWithdrawCollateral,
+  repayMax,
   type Loan,
 } from '@/lib/loan-tx'
 import { showUnits, toUnits, useTx } from '@/lib/use-tx'
@@ -278,7 +279,7 @@ export function LoanDialog({ market, symbol, readAt, onClose }: { market: Market
                   label={mode === 'borrow' ? `USDG to borrow${loan ? ` (up to ${U(capRoom > 0n ? capRoom : 0n)} at ${CAP}% of the line)` : ''}` : 'USDG to repay'}
                   value={rawUsdg}
                   onChange={(x) => (setRawUsdg(x), setDone(undefined))}
-                  max={loan ? (mode === 'borrow' ? (capRoom > 0n ? capRoom : 0n) : loan.debt) : undefined}
+                  max={loan ? (mode === 'borrow' ? (capRoom > 0n ? capRoom : 0n) : repayMax(loan)) : undefined}
                   decimals={USDG_DECIMALS}
                 />
               )}
