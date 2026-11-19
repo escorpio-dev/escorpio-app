@@ -137,8 +137,8 @@
 @media (min-width: 1000px) { .home-how-step h3 { font-size: 20px; } }
 .home-wrap .home-how-step p { font-size: 16px; }
 
-.home-reserve { margin-top: 90px; overflow: hidden; padding-bottom: 1px; }
-@media (min-width: 820px) { .home-reserve { margin-top: 180px; } }
+.home-reserve { margin-top: 24px; overflow: hidden; padding-bottom: 1px; }
+@media (min-width: 820px) { .home-reserve { margin-top: 40px; } }
 .home-reserve-header { border-bottom: 1px solid #444; }
 .home-reserve-header h2 { margin-bottom: 30px; }
 .home-reserve-header p { max-width: 570px; }
@@ -259,8 +259,8 @@
 /* Feature cards under "Escorpio reads every rate" (Features in home-page.tsx). Hairline grid: 1px gaps over the line
    colour, black cards. Each card spans three shared rows (header, text, footer) with subgrid so the rows line up
    across a row of cards; browsers without subgrid just stack each card's regions. */
-.k-features-wrap { margin: 0 0 80px; }
-@media (min-width: 1000px) { .k-features-wrap { margin-bottom: 120px; } }
+.k-features-wrap { margin: 0 0 48px; }
+@media (min-width: 1000px) { .k-features-wrap { margin-bottom: 60px; } }
 /* Small mono label, not a section title: beats the big .home-wrap h2. */
 .home-wrap .k-features-wrap > h2 { margin: 0 0 18px; font-family: var(--k-mono); font-size: 12px; font-weight: 400; font-stretch: 100%; letter-spacing: 0.08em; line-height: 1.4; text-transform: uppercase; color: var(--color-muted); }
 .k-features { display: grid; grid-template-columns: 1fr; gap: 1px; background: var(--color-line); border: 1px solid var(--color-line); }
@@ -296,12 +296,12 @@
   .k-feature:has(a.card-link:hover) footer svg { translate: 4px 0; }
 }
 
-/* "Put it to work" sits right under the feature cards, centred, with the rising coin columns faint behind it
+/* "Compare rates" sits right under the feature cards, centred, with the rising coin columns faint behind it.
    The picture is a centred crop (reserve-coins), fading out on every side. top: 0 because
    .home-reserve clips overflow; anything above it would show a hard edge. */
 .home-reserve-header { position: relative; isolation: isolate; text-align: center; padding-top: 70px; }
 .home-reserve-header { padding-bottom: 70px; }
-@media (min-width: 820px) { .home-reserve-header { padding-top: 110px; padding-bottom: 110px; } }
+@media (min-width: 820px) { .home-reserve-header { padding-top: 80px; padding-bottom: 110px; } }
 .home-reserve:focus { outline: none; }
 .home-reserve-header p { margin-inline: auto; text-shadow: 0 1px 12px #000, 0 0 2px #000; }
 @media (min-width: 820px) { .k-amount .relative { justify-content: center; align-items: center; } }
