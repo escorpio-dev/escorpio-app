@@ -10,6 +10,7 @@ import {
   borrowLimit,
   positionOverride,
   readLoan,
+  repayMax,
   simulateBorrow,
   simulateRepay,
   simulateSupplyCollateral,
@@ -51,6 +52,12 @@ async function tokenSlots(token: Address) {
     { address: token, stateDiff: [{ slot: key(ME, bal!), value: word(amount) }, { slot: key(BLUE, key(ME, alw!)), value: word(amount) }] },
   ]
 }
+
+// 0. "Max" on Repay never asks for more USDG than the wallet holds (it once filled the whole 9,002.59 debt for a wallet
+// holding 1,177.61, which the dialog then refused).
+assert.equal(repayMax({ debt: 9_002_590_000n, walletUsdg: 1_177_610_000n }), 1_177_610_000n)
+assert.equal(repayMax({ debt: 100_000_000n, walletUsdg: 500_000_000n }), 100_000_000n)
+assert.equal(repayMax({ debt: 0n, walletUsdg: 5n }), 0n)
 
 // 1. The Morpho Blue position override is read back exactly (collateral high half, borrow shares low half).
 const desk = await fetchDesk()
