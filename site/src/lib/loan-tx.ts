@@ -79,6 +79,9 @@ export async function readLoan(pc: PublicClient, account: Address, id: Hex): Pro
 }
 
 /** Most USDG this collateral can back at the market's liquidation line (borrowing all of it gets liquidated at once). */
+/** "Max" on Repay: the whole debt when the wallet can cover it, otherwise everything the wallet holds. */
+export const repayMax = (loan: Pick<Loan, 'debt' | 'walletUsdg'>) => (loan.walletUsdg < loan.debt ? loan.walletUsdg : loan.debt)
+
 export const borrowLimit = (collateral: bigint, price: bigint, lltv: bigint) => (collateral * price) / ORACLE_SCALE * lltv / WAD
 
 /** Value of the collateral in USDG (raw), at the oracle price. */

@@ -81,13 +81,18 @@ export function VaultDialog({ vault, readAt, onClose }: { vault: Vault; readAt: 
     if (!address || !pos || amount === 0n || block) return
     const t = setTimeout(async () => {
       try {
-        const r =
-          mode === 'deposit'
-            ? await simulateDeposit(publicClient, address, v, amount, needApprove ? usdgOverride(address, v, amount) : undefined)
-            : all
-              ? await simulateRedeemAll(publicClient, address, v, pos.shares)
-              : await simulateWithdraw(publicClient, address, v, amount)
-        setSim({ ok: true, out: r.result })
+        // `out` is what the user gets: vault shares for a deposit, USDG for a withdrawal. deposit() returns shares and
+        // redeem() returns USDG, but withdraw(assets) returns the shares it burns: the USDG out is the amount asked for.
+        let out: bigint
+        if (mode === 'deposit') {
+          out = (await simulateDeposit(publicClient, address, v, amount, needApprove ? usdgOverride(address, v, amount) : undefined)).result
+        } else if (all) {
+          out = (await simulateRedeemAll(publicClient, address, v, pos.shares)).result
+        } else {
+          await simulateWithdraw(publicClient, address, v, amount)
+          out = amount
+        }
+        setSim({ ok: true, out })
       } catch (e) {
         setSim({ ok: false, why: plainError(e) })
       }
