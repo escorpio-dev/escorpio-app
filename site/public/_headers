@@ -1,0 +1,16 @@
+# Cloudflare Pages response headers. The site asks a wallet to sign money moves, so it must never load inside
+# someone else's page (frame-ancestors / X-Frame-Options stop click-jacking) and may only talk to the two services it
+# reads: the Morpho API and the Robinhood Chain RPC. Wallet extensions inject through their own content scripts,
+# which this policy does not block. Wallet icons arrive as data: images.
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self'; font-src 'self'; connect-src 'self' https://api.morpho.org https://rpc.mainnet.chain.robinhood.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/media/*
+  Cache-Control: public, max-age=604800
