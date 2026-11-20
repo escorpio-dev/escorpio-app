@@ -29,6 +29,7 @@ export function BorrowPage() {
   const current = groups.find((g) => g.address.toLowerCase() === wanted) ?? groups.find((g) => g.symbol === 'NVDA') ?? groups[0]
   const best = desk && current ? cheapest(current, amount, desk.readAt) : undefined
   const selected = current?.markets.find((m) => m.id === sel)
+  const picked = selected ?? best
   // Cheapest open market per collateral, then the lowest of those: the best rate a borrower can get today.
   const lows = desk ? groups.map((g) => ({ g, m: cheapest(g, 0, desk.readAt) })).filter((x) => x.m) : []
   const low = lows.reduce<(typeof lows)[number] | undefined>((a, b) => (!a || b.m!.borrowApy < a.m!.borrowApy ? b : a), undefined)
@@ -125,17 +126,25 @@ export function BorrowPage() {
                 )}
               </div>
               {best && (
-                <div className="mt-4 flex items-center justify-between">
-                  <button type="button" onClick={() => setSel(best.id)} className="accent-link text-sm">
-                    Show it on the line
-                  </button>
+                <div className="mt-4 flex justify-end">
                   <LoanButton market={best} now={desk.readAt} symbol={current.symbol} onOpen={setOpen} />
                 </div>
               )}
             </div>
             <div className="lg:pt-6">
               <div className="label mb-2">Borrow rate a year, every {current.symbol} market</div>
-              <RateAxis markets={current.markets} lowId={best?.id} selectedId={selected?.id ?? best?.id} onSelect={setSel} />
+              <RateAxis markets={current.markets} lowId={best?.id} selectedId={picked?.id} onSelect={setSel} />
+              {/* The dot picked on the line (the cheapest one until another is clicked), with its own Borrow button. */}
+              {picked && (
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4" aria-live="polite">
+                  <p className="num text-sm leading-relaxed text-body">
+                    <span className="text-[1.25rem] text-ink">{pct(picked.borrowApy)}</span> a year · {usd(picked.availableUsd)} free ·
+                    liquidation at {(picked.lltv * 100).toFixed(1)}% · market {short(picked.id)}
+                    {picked.id === best?.id && <span className="text-accent"> · cheapest for {usdg(amount)} USDG</span>}
+                  </p>
+                  {picked.id !== best?.id && <LoanButton market={picked} now={desk.readAt} symbol={current.symbol} onOpen={setOpen} />}
+                </div>
+              )}
             </div>
           </section>
 
