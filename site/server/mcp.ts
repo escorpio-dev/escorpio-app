@@ -21,7 +21,7 @@ export const TOOLS = [
     name: 'get_best_rates',
     title: 'Best USDG rates now',
     description:
-      'Headline readings: the best open USDG vault (Morpho, Robinhood Chain), the open vaults by net rate, the cheapest USDG loan per collateral token, and the widest borrow-rate gap for the same collateral and liquidation point.',
+      'Headline readings: the best open USDG vault (Morpho, Robinhood Chain) and the biggest open one (quote the size with any rate: the best rate can sit in a small vault), the open vaults by net rate, the cheapest USDG loan per collateral token, and the widest borrow-rate gap for the same collateral and liquidation point.',
     inputSchema: { type: 'object', properties: {}, additionalProperties: false },
     annotations: { title: 'Best USDG rates now', ...READ_ONLY },
   },

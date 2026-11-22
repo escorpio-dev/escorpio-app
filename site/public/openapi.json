@@ -176,6 +176,7 @@
             "type": "object",
             "properties": {
               "bestOpenVault": { "oneOf": [{ "$ref": "#/components/schemas/Vault" }, { "type": "null" }] },
+              "biggestOpenVault": { "oneOf": [{ "$ref": "#/components/schemas/Vault" }, { "type": "null" }], "description": "Largest open vault; quote it next to the best rate." },
               "openVaults": { "type": "array", "items": { "$ref": "#/components/schemas/Vault" } },
               "cheapestLoanPerCollateral": {
                 "type": "array",

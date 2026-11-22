@@ -24,6 +24,7 @@ for (const t of list.result.tools) assert.equal(t.annotations.readOnlyHint, true
 const best = (await call('tools/call', { name: 'get_best_rates', arguments: {} })).result
 assert.ok(!best.isError)
 assert.ok(best.structuredContent.readAt && best.structuredContent.bestOpenVault, 'best open vault')
+assert.ok(best.structuredContent.biggestOpenVault.totalUsd >= best.structuredContent.bestOpenVault.totalUsd, 'biggest open vault')
 assert.equal(JSON.parse(best.content[0].text).readAt, best.structuredContent.readAt)
 
 const vaults = (await call('tools/call', { name: 'list_vaults', arguments: { open_only: true, limit: 2 } })).result.structuredContent

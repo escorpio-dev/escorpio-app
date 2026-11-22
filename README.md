@@ -19,8 +19,8 @@ from your own wallet. Every step is simulated on chain before you sign, and appr
 | Borrow | Every USDG loan market per collateral token: borrow rate, liquidation line, what is still available | Put collateral in, borrow, repay, take collateral back |
 | Method | Where every number comes from and what each risk note means | |
 
-Receive (USDG payment links and invoices) and Pay out (payroll from a pasted list) are next. They show as
-"Coming next" on the site until they work.
+Receive (USDG payment links and invoices) and Pay out (payroll from a pasted list) are next. They are not shown on
+the site as features until they work.
 
 ## How it works
 

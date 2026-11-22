@@ -71,7 +71,7 @@ function Top() {
           <p className="k-yield" aria-live="polite">
             {best && amount > 0 ? (
               <>
-                A year in {best.name} at {pct(best.netApy)}: <strong>+{usdg(yearly(amount, best.netApy))} USDG</strong>, if the rate held.
+                A year in {best.name} ({usd(best.totalUsd)} inside) at {pct(best.netApy)}: <strong>+{usdg(yearly(amount, best.netApy))} USDG</strong>, if the rate held.
               </>
             ) : (
               ' '
@@ -191,7 +191,7 @@ function Features() {
       d: 'The net rate after fees, what you could take out today, and the reason a high rate is high.',
       img: 'feat-park',
       to: '/earn',
-      stat: best ? `Best open rate ${pct(best.netApy)}` : undefined,
+      stat: best ? `Best open rate ${pct(best.netApy)}, a ${usd(best.totalUsd)} vault` : undefined,
     },
     {
       t: 'Borrow against stock tokens',
@@ -207,8 +207,6 @@ function Features() {
       to: '/method',
       stat: desk ? `${flagged} of ${desk.vaults.length} vaults flagged now` : undefined,
     },
-    { t: 'Receive with a link', d: 'Signed payment links and invoices, each with a receipt read from the chain.', img: 'feat-receive' },
-    { t: 'Pay out', d: 'Payroll from a pasted list of addresses and amounts, checked line by line before one signature.', img: 'feat-payout' },
   ]
   return (
     <section aria-labelledby="features-title" className="k-features-wrap">
@@ -346,7 +344,7 @@ function Agents() {
           <p className="chat-a">
             {best && desk ? (
               <>
-                {best.name} pays {pct(best.netApy)} a year after fees, read {ago(desk.readAt, now)}. At that rate 10,000 USDG
+                {best.name}, a {usd(best.totalUsd)} vault, pays {pct(best.netApy)} a year after fees, read {ago(desk.readAt, now)}. At that rate 10,000 USDG
                 would earn about {usdg(yearly(10_000, best.netApy))} USDG in a year, if the rate held. Deposit from your own
                 wallet at escorpio.pro/earn.
               </>
@@ -457,10 +455,8 @@ function Reserve() {
             Struck-through entries are closed or stuck right now.
           </p>
         </div>
-        <RateRow n="01" title="Receive" plates={2} soon="Signed USDG payment links and invoices, each with a receipt read from the chain." />
-        <RateRow n="02" title="Park" plates={4} items={park} cta={{ to: '/earn', label: 'Every vault' }} unit="net a year" />
-        <RateRow n="03" title="Borrow" plates={6} items={borrow} cta={{ to: '/borrow', label: 'Every loan' }} unit="cheapest loan" />
-        <RateRow n="04" title="Pay out" plates={8} soon="Payroll from a pasted list of addresses and amounts, checked line by line before one signature." />
+        <RateRow n="01" title="Park" plates={4} items={park} cta={{ to: '/earn', label: 'Every vault' }} unit="net a year" />
+        <RateRow n="02" title="Borrow" plates={6} items={borrow} cta={{ to: '/borrow', label: 'Every loan' }} unit="cheapest loan" />
       </div>
     </section>
   )
