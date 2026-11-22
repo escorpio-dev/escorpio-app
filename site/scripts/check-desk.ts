@@ -8,8 +8,9 @@ const now = Date.UTC(2026, 10, 19) // 19 Nov 2026
 const old = now / 1000 - 90 * 86_400
 const NVDA = '0x00000000000000000000000000000000000000a1'
 const FAKE_NVDA = '0x00000000000000000000000000000000000000b2'
+const hid = (c: string) => '0x' + c.repeat(64) // fixture market ids: valid 32-byte hex
 const mk = (id: string, col: string, sym: string, apy: number, supply: number, avail: number, lltv = '625000000000000000', warnings: unknown[] = []) => ({
-  marketId: id,
+  marketId: hid(id),
   lltv,
   creationTimestamp: old,
   listed: true,
@@ -72,18 +73,41 @@ assert.equal(groups.filter((g) => g.symbol === 'NVDA').length, 2)
 assert.ok(sharedSymbols(groups).has('NVDA'))
 // Cheapest loan that can actually lend the amount.
 const real = groups.find((g) => g.address === NVDA)!
-assert.equal(cheapest(real, 0, now)?.id, 'd') // 1.00% at 77% LLTV
-assert.equal(cheapest(real, 30_000, now)?.id, 'd')
-assert.equal(cheapest(real, 50_000, now)?.id, 'a') // only market with $50k free
+assert.equal(cheapest(real, 0, now)?.id, hid('d')) // 1.00% at 77% LLTV
+assert.equal(cheapest(real, 30_000, now)?.id, hid('d'))
+assert.equal(cheapest(real, 50_000, now)?.id, hid('a')) // only market with $50k free
 assert.equal(cheapest(real, 200_000, now), undefined)
 // Widest gap compares the same collateral at the same LLTV only: 20.62% vs 1.51%.
 const gap = widestGap(desk)!
-assert.equal(gap.low.id, 'b')
-assert.equal(gap.high.id, 'a')
+assert.equal(gap.low.id, hid('b'))
+assert.equal(gap.high.id, hid('a'))
 assert.equal(gap.lltv, 0.625)
 assert.equal(Math.round(gap.points * 100) / 100, 19.11)
 assert.equal(Math.round(yearly(10_000, 0.0479) * 100) / 100, 479)
 assert.ok(marketNotes(desk.markets[5], now).some((x) => x.text.startsWith('Small market')))
+// Malformed rows are dropped, not shown as 0%: bad market id, missing rate, broken address, missing vault rate.
+const bad = parseDesk(
+  {
+    data: {
+      markets: {
+        items: [
+          mk('a', NVDA, 'NVDA', 0.02, 10_000, 5_000),
+          { ...mk('b', NVDA, 'NVDA', 0.02, 10_000, 5_000), marketId: 'not-an-id' },
+          { ...mk('c', NVDA, 'NVDA', 0.02, 10_000, 5_000), state: { supplyApy: 0.01 } },
+          mk('d', '0x123', 'NVDA', 0.02, 10_000, 5_000),
+          mk('e', NVDA, 'NVDA', 0.02, 10_000, 5_000, '1000000000000000000'),
+        ],
+      },
+      vaultV2s: { items: [vk('Good', USDG, 0.04, 1_000, 1_000), vk('', USDG, 0.03, 1_000, 1_000), vk('No rate', USDG, NaN, 1_000, 1_000), { ...vk('x', USDG, 0.04, 1, 1), address: 'nope' }] },
+    },
+  },
+  now,
+)
+assert.deepEqual(bad.markets.map((x) => x.id), [hid('a')])
+assert.equal(bad.vaults.length, 2)
+assert.equal(bad.vaults[0].name, 'Good')
+assert.match(bad.vaults[1].name, /^Unnamed vault 0x0000…00[0-9a-f]{2}$/)
+assert.throws(() => parseDesk({ data: { markets: {} } }, now), /unexpected answer/)
 console.log('fixture checks: ok')
 
 // Live read: shape and sanity only (the numbers move).

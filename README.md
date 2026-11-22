@@ -70,11 +70,18 @@ npm run check:deposit   # deposit 100 USDG into every open vault; refused when t
 npm run check:borrow    # per open market: borrow 100 USDG, refused past the limit, repay all, take collateral back, put collateral in
 ```
 
+GitHub Actions runs the build and all three checks on every pull request and on main
+([.github/workflows/ci.yml](.github/workflows/ci.yml)).
+
+Every row from the Morpho API is checked before it reaches the page: a market with a malformed id, a bad address, a
+missing rate or an impossible liquidation line is dropped rather than shown as 0%. `npm run check` covers these
+cases with broken fixture rows.
+
 ## Layout
 
 ```
 site/
-  src/data/morpho.ts      Morpho API query and parsing, contract addresses
+  src/data/morpho.ts      Morpho API query, row validation, contract addresses
   src/data/desk.ts        rankings, cheapest loan, risk notes
   src/lib/chain.ts        Robinhood Chain client
   src/lib/use-wallet.ts   wallet discovery (EIP-6963), connect, switch chain
@@ -97,3 +104,11 @@ account at the same time. Any other address is not ours.
 `main` is protected: changes go in through a pull request. Commits follow
 [Conventional Commits](https://www.conventionalcommits.org/) (`feat(site): ...`, `fix(site): ...`).
 Spot something rough? Open an issue.
+
+## Security
+
+See [SECURITY.md](SECURITY.md) for what to report and how (privately, through GitHub).
+
+## License
+
+[MIT](LICENSE)
