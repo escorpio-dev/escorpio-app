@@ -78,6 +78,15 @@
 @media (min-width: 820px) { .home-top-video { width: 100%; } }
 .home-top-video:after { content: ''; position: absolute; width: 100%; height: 100%; bottom: 0; left: 0; background: linear-gradient(transparent, transparent, #000); }
 .home-top-video video, .home-top-video img { width: 100%; display: block; }
+/* Desktop: the hero fills the whole first screen, the video covers it edge to edge (cropped, never letterboxed),
+   and only the last strip fades to black. */
+@media (min-width: 820px) {
+  .home-top { min-height: 100vh; min-height: 100svh; padding-bottom: 40px; }
+  .home-top:after { background: linear-gradient(transparent 45%, rgba(0,0,0,0.4) 75%, #000 100%); }
+  .home-top-video { height: 100%; }
+  .home-top-video:after { display: none; }
+  .home-top-video video, .home-top-video img { height: 100%; object-fit: cover; object-position: center top; }
+}
 
 .home-intro { margin: 80px 0; }
 @media (min-width: 1000px) { .home-intro { margin: 150px 0; } }
