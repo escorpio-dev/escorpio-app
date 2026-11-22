@@ -16,6 +16,16 @@ const OWN_NOTES: [string, string, boolean][] = [
   ['Extreme rate', 'Borrow rate above 50% a year.', false],
 ]
 
+const CODE = 'https://github.com/escorpio-dev/escorpio-app'
+
+// The public API (functions/api). Same readings the pages show.
+const API: [string, string][] = [
+  ['/api/rates', 'Best open vault, cheapest loan per collateral, widest rate gap.'],
+  ['/api/vaults', 'Every USDG vault, best net rate first. Add ?open=1 for open ones only.'],
+  ['/api/markets', 'Every USDG loan market, cheapest first. Add ?collateral= with an address or symbol.'],
+  ['/api/desk', "Morpho's answer exactly as the site reads it, with the time it was read."],
+]
+
 export function MethodPage() {
   return (
     <main className="wrap pb-28 pt-[130px] lg:pt-[180px]">
@@ -27,9 +37,49 @@ export function MethodPage() {
       <div className="mt-14 grid gap-x-16 lg:grid-cols-[14rem_1fr]">
         <Block title="Where it comes from">
           <p>
-            Your browser asks the public Morpho API (<code className="num text-[0.9em]">{MORPHO_API}</code>) directly, when the page
-            opens and again every 60 seconds while the tab is open. There is no Escorpio server in between yet, so nobody can
-            edit a number on its way to you. Morpho's own numbers can lag the chain by a short while.
+            Escorpio's own API reads the public Morpho API (<code className="num text-[0.9em]">{MORPHO_API}</code>) at most once a
+            minute and passes Morpho's answer through unchanged. Your browser reads that answer when the page opens and again
+            every 60 seconds while the tab is open, and checks every row before showing it. If our API does not answer, your
+            browser asks Morpho directly. Morpho's own numbers can lag the chain by a short while.
+          </p>
+        </Block>
+        <Block title="Check it yourself">
+          <p className="mb-4">
+            Every number on this site is also public as JSON. No key, no login, open to any app or agent. Each answer says when it
+            was read.
+          </p>
+          <dl className="mb-5 grid gap-3">
+            {API.map(([path, text]) => (
+              <div key={path} className="grid gap-1 sm:grid-cols-[11rem_1fr]">
+                <dt>
+                  <a href={path} className="accent-link num text-sm">
+                    {path}
+                  </a>
+                </dt>
+                <dd>{text}</dd>
+              </div>
+            ))}
+          </dl>
+          <pre className="num overflow-x-auto border border-line-2 p-4 text-[13px] leading-relaxed text-ink">
+            {'curl -s https://escorpio.pro/api/rates\n'}
+            {'curl -s "https://escorpio.pro/api/markets?collateral=NVDA"\n'}
+            {'curl -s "https://escorpio.pro/api/vaults?open=1"'}
+          </pre>
+          <p className="mt-4">
+            To check us against the source, <code className="num text-[0.9em]">/api/desk</code> is Morpho's answer byte for byte,
+            and the exact question we ask Morpho is in{' '}
+            <a href={`${CODE}/blob/main/site/src/data/morpho.ts`} target="_blank" rel="noopener noreferrer" className="accent-link">
+              morpho.ts
+            </a>
+            . Every deposit and loan step is simulated against the real contracts on each change to the code (
+            <a href={`${CODE}/actions`} target="_blank" rel="noopener noreferrer" className="accent-link">
+              test runs
+            </a>
+            ). For AI agents there is a short guide at{' '}
+            <a href="/llms.txt" className="accent-link num text-[0.9em]">
+              /llms.txt
+            </a>
+            .
           </p>
         </Block>
         <Block title="What is in">
