@@ -4,11 +4,11 @@ import { ArrowSvg } from '@/components/arrow-svg'
 import { DeskReadout } from '@/components/desk-readout'
 import { RateRow, type RateItem } from '@/components/rate-row'
 import { cheapest, collaterals, headlineVaults, vaultNotes, yearly } from '@/data/desk'
-import { pct, usd, usdg } from '@/lib/format'
-import { useDesk } from '@/lib/use-desk'
+import { ago, pct, usd, usdg } from '@/lib/format'
+import { useDesk, useNow } from '@/lib/use-desk'
 
 // Home page (styles in layout.css): hero with the amount box, what Escorpio does, pictures, the rate rows with live
-// Morpho numbers, and how it works.
+// Morpho numbers, the same desk for people and their AI agents, and how it works.
 export function HomePage() {
   return (
     <main className="home-wrap">
@@ -17,6 +17,7 @@ export function HomePage() {
       <What />
       <PhotoGrid />
       <Reserve />
+      <Agents />
       <How />
     </main>
   )
@@ -88,7 +89,8 @@ function Intro() {
       <div className="width">
         <p>
           <span className="k-accent">Escorpio</span> shows live rates for every USDG vault and loan on Robinhood Chain. You can
-          park idle money, borrow against your stock tokens, or just compare. No sign-up, no custody, no made-up numbers.
+          park idle money, borrow against your stock tokens, or just compare, yourself or through your AI agent. No sign-up, no
+          custody, no made-up numbers.
         </p>
       </div>
     </div>
@@ -250,8 +252,132 @@ function Features() {
   )
 }
 
+// The same desk for people and for AI agents. People use the pages; agents plug in the MCP server (functions/mcp.ts)
+// or the API and get the same readings. Agents read, they never sign: the exchange below is built from this minute's
+// reading, exactly what the get_best_rates tool returns, never typed in.
+const MCP_URL = 'https://escorpio.pro/mcp'
+const AGENT_TOOLS = [
+  ['get_best_rates', 'best open vault, cheapest loan per token'],
+  ['list_vaults', 'every USDG vault with its risk notes'],
+  ['list_markets', 'every loan market, filter by token'],
+  ['explain_risk_notes', 'what each warning means'],
+]
+
+function Agents() {
+  const { desk } = useDesk()
+  const now = useNow()
+  const [copied, setCopied] = useState(false)
+  const best = desk ? headlineVaults(desk)[0] : undefined
+  const nvda = desk ? collaterals(desk).find((g) => g.symbol === 'NVDA') : undefined
+  const loan = nvda && desk ? cheapest(nvda, 0, desk.readAt) : undefined
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(MCP_URL)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1800)
+    } catch {
+      setCopied(false)
+    }
+  }
+  return (
+    <section className="home-agents" aria-labelledby="agents-title">
+      <div className="width">
+        <div className="fancy-divider">
+          <div className="circle" />
+          <div className="circle" />
+        </div>
+        <h2 id="agents-title">
+          For you
+          <br />
+          and your agent
+        </h2>
+        <p className="home-agents-lede">
+          Everything Escorpio reads is open to people and to AI agents. Ask on the page or ask your agent: the rates are the
+          same, read the same minute. Whoever asks, the money only moves when you sign.
+        </p>
+        <div className="home-agents-cols">
+          <article className="home-agents-col">
+            <span className="who">01 · You</span>
+            <h3>Use the desk</h3>
+            <ul>
+              <li>Compare every USDG vault and loan on Robinhood Chain.</li>
+              <li>Deposit, withdraw, borrow and repay from your own wallet.</li>
+              <li>Each step is simulated before you sign, approvals for the exact amount.</li>
+            </ul>
+            <div className="home-agents-cta">
+              <Link to="/earn" className="button">
+                <ArrowSvg />
+                Park USDG
+              </Link>
+              <Link to="/borrow" className="k-link">
+                or borrow against a stock token
+              </Link>
+            </div>
+          </article>
+          <article className="home-agents-col">
+            <span className="who">02 · Your agent</span>
+            <h3>Plug in Escorpio</h3>
+            <p>
+              Add Escorpio as an MCP server in Claude, ChatGPT, Cursor or any agent that speaks MCP. No key, no sign-up.
+            </p>
+            <div className="k-endpoint">
+              <code>{MCP_URL}</code>
+              <button type="button" className="button" onClick={copy} aria-live="polite">
+                {copied ? 'Copied' : 'Copy'}
+              </button>
+            </div>
+            <ul className="home-agents-tools">
+              {AGENT_TOOLS.map(([name, what]) => (
+                <li key={name}>
+                  <code>{name}</code> {what}
+                </li>
+              ))}
+            </ul>
+            <p className="home-agents-small">
+              Agents read, they do not sign. Your agent finds the rate and the market; the deposit or loan still happens here,
+              in your wallet. Also as an <a href="/openapi.json">OpenAPI file</a> and <a href="/llms.txt">llms.txt</a>.
+            </p>
+          </article>
+        </div>
+        <figure className="home-agents-chat" aria-live="polite">
+          <figcaption>What an agent gets through Escorpio, from this minute's reading</figcaption>
+          <p className="chat-q">Where can I park 10,000 USDG on Robinhood Chain?</p>
+          <p className="chat-tool">get_best_rates</p>
+          <p className="chat-a">
+            {best && desk ? (
+              <>
+                {best.name} pays {pct(best.netApy)} a year after fees, read {ago(desk.readAt, now)}. At that rate 10,000 USDG
+                would earn about {usdg(yearly(10_000, best.netApy))} USDG in a year, if the rate held. Deposit from your own
+                wallet at escorpio.pro/earn.
+              </>
+            ) : (
+              'Reading Morpho…'
+            )}
+          </p>
+          <p className="chat-q">And the cheapest USDG loan against NVDA?</p>
+          <p className="chat-tool">get_best_rates · cheapest loan per collateral</p>
+          <p className="chat-a">
+            {desk ? (
+              loan ? (
+                <>
+                  {pct(loan.borrowApy)} a year in the market that liquidates at {pct(loan.lltv, 1)} of the collateral value,
+                  with {usd(loan.availableUsd)} free to borrow now. Borrow from your own wallet at escorpio.pro/borrow.
+                </>
+              ) : (
+                'No NVDA market has $1,000 free to borrow right now.'
+              )
+            ) : (
+              'Reading Morpho…'
+            )}
+          </p>
+        </figure>
+      </div>
+    </section>
+  )
+}
+
 const STEPS = [
-  { icon: 'read', t: 'Read Morpho live', d: 'Your browser asks the public Morpho API for every USDG vault and market, every minute.' },
+  { icon: 'read', t: 'Read Morpho live', d: 'Escorpio reads every USDG vault and market from the public Morpho API, every minute.' },
   { icon: 'flag', t: 'Flag the risks', d: 'Closed deposits, nothing to withdraw, unknown collateral: said in plain words.' },
   { icon: 'sign', t: 'Sign in your wallet', d: 'Deposit, borrow and repay right here; each step is simulated first, then you sign. We never touch the money.' },
 ]
