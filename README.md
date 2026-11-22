@@ -4,7 +4,7 @@ Escorpio is a USDG money desk on Robinhood Chain (chain id 4663). It shows where
 vaults and where USDG is cheapest to borrow against stock tokens, then lets you deposit, withdraw, borrow and repay
 from your own wallet. Every step is simulated on chain before you sign, and approvals are for the exact amount.
 
-[Website](https://escorpio.pages.dev) · [Earn](https://escorpio.pages.dev/earn) · [Borrow](https://escorpio.pages.dev/borrow) · [Method](https://escorpio.pages.dev/method)
+[Website](https://escorpio.pro) · [Earn](https://escorpio.pro/earn) · [Borrow](https://escorpio.pro/borrow) · [Method](https://escorpio.pro/method)
 
 > Escorpio never holds your money and has no smart contract of its own: transactions go from your wallet straight to
 > the Morpho vault or market. Rates change every block, vault shares can lose value, and a loan can be liquidated.
@@ -42,7 +42,7 @@ browser ──► Morpho API (rates, vaults, markets, risk warnings), read every
   liquidation price before you sign.
 - **Risk notes.** Morpho's own warnings plus Escorpio's: small vault or market, under 30 days old, almost nothing
   withdrawable, no named curator, very high or negative rate, almost fully borrowed. Some notes block deposits until
-  they clear. Full list on the [Method page](https://escorpio.pages.dev/method).
+  they clear. Full list on the [Method page](https://escorpio.pro/method).
 
 Contracts used: USDG `0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168`, Morpho Blue
 `0x9D53d5E3bd5E8d4Cbfa6DB1ca238AEA02E651010`, and the Morpho vaults listed on the Earn page.
