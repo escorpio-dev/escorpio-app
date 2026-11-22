@@ -4,7 +4,22 @@
 > against stock tokens, then lets people deposit, withdraw, borrow and repay from their own wallet. Escorpio never
 > holds funds and has no smart contract of its own. Nothing it shows is financial advice.
 
+## MCP server
+
+Add `https://escorpio.pro/mcp` as a remote MCP server (Streamable HTTP, no key, no login). Read-only tools:
+
+- `get_best_rates`: best open USDG vault, cheapest loan per collateral, widest rate gap
+- `list_vaults`: USDG vaults, best net rate first (`open_only`, `limit`)
+- `list_markets`: USDG loan markets, cheapest first (`collateral`, `limit`)
+- `explain_risk_notes`: what every risk note means
+
+Quote `readAt` with any rate. Never call a rate safe or guaranteed. To act, send people to the Earn or Borrow page,
+where they sign with their own wallet.
+
 ## Public API
+
+OpenAPI description: [openapi.json](https://escorpio.pro/openapi.json)
+
 
 No key, no login. JSON, open to any origin. Each reading is at most one minute old and says when it was read
 (`readAt`). Rates are percent per year, money is US dollars.

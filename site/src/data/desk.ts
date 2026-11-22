@@ -19,6 +19,20 @@ export const WARNING_TEXT: Record<string, string> = {
 }
 export const STOP_CODES = new Set(['deposit_disabled', 'oracle_unusable', 'bad_debt_unrealized'])
 
+// Our own notes in plain words: [label, meaning, stop]. Shown on the Method page and by the MCP tool
+// explain_risk_notes; keep in step with vaultNotes / marketNotes below.
+export const OWN_NOTES: [string, string, boolean][] = [
+  ['Small (under $100k)', 'Vault holds less than $100k. A few deposits or withdrawals can move its rate a lot.', false],
+  ['Small market (under $10k)', 'Market has less than $10k supplied.', false],
+  ['New (under 30 days)', 'Created less than 30 days ago, so there is little history to judge it by.', false],
+  ['Almost nothing can be withdrawn now', 'Less than 1% of the vault (or under $100) could leave right now. You may have to wait to get out.', true],
+  ['No named curator', 'Morpho shows no curator name for this vault.', false],
+  ['Very high rate, ask why', 'Net rate above 25% a year. Someone is paying for a risk.', false],
+  ['Rate below zero', 'The vault is losing value at today\'s rate.', true],
+  ['Almost fully borrowed', 'At least 98% of the market is lent out: little is left to borrow, and lenders may wait to withdraw.', false],
+  ['Extreme rate', 'Borrow rate above 50% a year.', false],
+]
+
 const fromWarnings = (ws: Warning[]): Note[] =>
   ws.map((w) => ({
     text: WARNING_TEXT[w.type] ?? w.type.replace(/_/g, ' '),

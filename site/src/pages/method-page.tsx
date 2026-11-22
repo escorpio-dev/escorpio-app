@@ -1,20 +1,8 @@
 import type { ReactNode } from 'react'
 import { PageHead } from '@/components/page-head'
-import { STOP_CODES, WARNING_TEXT } from '@/data/desk'
+import { OWN_NOTES, STOP_CODES, WARNING_TEXT } from '@/data/desk'
 import { CHAIN_ID, EXPLORER, MORPHO_API, MORPHO_BLUE, USDG } from '@/data/morpho'
 
-// Our own notes, as written in desk.ts (vaultNotes / marketNotes).
-const OWN_NOTES: [string, string, boolean][] = [
-  ['Small (under $100k)', 'Vault holds less than $100k. A few deposits or withdrawals can move its rate a lot.', false],
-  ['Small market (under $10k)', 'Market has less than $10k supplied.', false],
-  ['New (under 30 days)', 'Created less than 30 days ago, so there is little history to judge it by.', false],
-  ['Almost nothing can be withdrawn now', 'Less than 1% of the vault (or under $100) could leave right now. You may have to wait to get out.', true],
-  ['No named curator', 'Morpho shows no curator name for this vault.', false],
-  ['Very high rate, ask why', 'Net rate above 25% a year. Someone is paying for a risk.', false],
-  ['Rate below zero', 'The vault is losing value at today\'s rate.', true],
-  ['Almost fully borrowed', 'At least 98% of the market is lent out: little is left to borrow, and lenders may wait to withdraw.', false],
-  ['Extreme rate', 'Borrow rate above 50% a year.', false],
-]
 
 const CODE = 'https://github.com/escorpio-dev/escorpio-app'
 
@@ -75,11 +63,20 @@ export function MethodPage() {
             <a href={`${CODE}/actions`} target="_blank" rel="noopener noreferrer" className="accent-link">
               test runs
             </a>
-            ). For AI agents there is a short guide at{' '}
+            ).
+          </p>
+          <p className="mt-4">
+            AI agents can use the same readings as tools: add{' '}
+            <code className="num text-[0.9em] text-ink">https://escorpio.pro/mcp</code> as an MCP server (no key). For other
+            tools there is an{' '}
+            <a href="/openapi.json" className="accent-link num text-[0.9em]">
+              OpenAPI file
+            </a>{' '}
+            and a short guide at{' '}
             <a href="/llms.txt" className="accent-link num text-[0.9em]">
               /llms.txt
             </a>
-            .
+            . Agents can read, not sign: every deposit and loan is still signed by a person in their own wallet.
           </p>
         </Block>
         <Block title="What is in">

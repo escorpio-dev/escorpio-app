@@ -64,8 +64,26 @@ No key, no login, JSON open to any origin. Every reading says when it was read; 
 curl -s https://escorpio.pro/api/rates
 ```
 
-A short guide for AI agents is at [`/llms.txt`](https://escorpio.pro/llms.txt). The code is in `site/functions/api`
-and `site/server/api.ts`.
+A short guide for AI agents is at [`/llms.txt`](https://escorpio.pro/llms.txt), and an OpenAPI description at
+[`/openapi.json`](https://escorpio.pro/openapi.json). The code is in `site/functions/api` and `site/server/api.ts`.
+
+## MCP server
+
+AI agents can use the same readings as tools. Add `https://escorpio.pro/mcp` as a remote MCP server (Streamable HTTP,
+no key). Read-only: agents can read rates, they cannot sign or move anything.
+
+| Tool | What |
+|---|---|
+| `get_best_rates` | Best open vault, cheapest loan per collateral, widest rate gap |
+| `list_vaults` | USDG vaults, best net rate first (`open_only`, `limit`) |
+| `list_markets` | USDG loan markets, cheapest first (`collateral`, `limit`) |
+| `explain_risk_notes` | What every risk note means |
+
+```bash
+claude mcp add --transport http escorpio https://escorpio.pro/mcp
+```
+
+Code: `site/functions/mcp.ts` and `site/server/mcp.ts`, checked by `npm run check:mcp`.
 
 ## Run it locally
 
@@ -85,8 +103,9 @@ None of these move money. They run against the real contracts on Robinhood Chain
 overrides to give a made-up address balances, approvals, collateral or debt.
 
 ```bash
-npm test                # all three below, in order
+npm test                # all four below, in order
 npm run check           # desk logic on hand-made rows, then a live read of the Morpho API
+npm run check:mcp       # MCP handshake, tool list, every tool on a live read, error paths
 npm run check:deposit   # deposit 100 USDG into every open vault; refused when the approval is 1 unit short; withdraw all
 npm run check:borrow    # per open market: borrow 100 USDG, refused past the limit, repay all, take collateral back, put collateral in
 ```

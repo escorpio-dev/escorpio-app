@@ -1,0 +1,200 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Escorpio API",
+    "version": "0.1.0",
+    "summary": "Live USDG vault and loan readings on Robinhood Chain.",
+    "description": "Read-only readings of Morpho vaults and USDG loan markets on Robinhood Chain (chain 4663), read from the public Morpho API at most once a minute. Rates are percent per year, money is whole US dollars. Every vault and market carries plain-word risk notes; a note with stop=true is a reason not to use it right now, and no note does not mean safe. Readings, not advice. An MCP server with the same data is at https://escorpio.pro/mcp.",
+    "license": { "name": "MIT", "url": "https://github.com/escorpio-dev/escorpio-app/blob/main/LICENSE" },
+    "contact": { "url": "https://github.com/escorpio-dev/escorpio-app" }
+  },
+  "servers": [{ "url": "https://escorpio.pro" }],
+  "externalDocs": { "description": "How every number is read", "url": "https://escorpio.pro/method" },
+  "paths": {
+    "/api/rates": {
+      "get": {
+        "operationId": "getBestRates",
+        "summary": "Best open USDG vault, cheapest loan per collateral, widest rate gap",
+        "responses": {
+          "200": { "description": "Headline readings", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Rates" } } } },
+          "502": { "$ref": "#/components/responses/Unavailable" }
+        }
+      }
+    },
+    "/api/vaults": {
+      "get": {
+        "operationId": "listVaults",
+        "summary": "Every Morpho vault holding real USDG, best net rate first",
+        "parameters": [
+          {
+            "name": "open",
+            "in": "query",
+            "required": false,
+            "description": "1 keeps only vaults Escorpio would headline: listed, open, $50k+, no stop note.",
+            "schema": { "type": "string", "enum": ["1"] }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Vaults",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/About" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "filter": { "type": "string", "enum": ["all", "open"] },
+                        "count": { "type": "integer" },
+                        "vaults": { "type": "array", "items": { "$ref": "#/components/schemas/Vault" } }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "502": { "$ref": "#/components/responses/Unavailable" }
+        }
+      }
+    },
+    "/api/markets": {
+      "get": {
+        "operationId": "listMarkets",
+        "summary": "Every Morpho market lending USDG, cheapest borrow rate first",
+        "parameters": [
+          {
+            "name": "collateral",
+            "in": "query",
+            "required": false,
+            "description": "Collateral token address (preferred) or symbol such as NVDA. Look-alike tokens can share a symbol.",
+            "schema": { "type": "string", "maxLength": 64 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Markets",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/About" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "count": { "type": "integer" },
+                        "markets": { "type": "array", "items": { "$ref": "#/components/schemas/Market" } }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "502": { "$ref": "#/components/responses/Unavailable" }
+        }
+      }
+    },
+    "/api/desk": {
+      "get": {
+        "operationId": "getRawMorphoAnswer",
+        "summary": "The Morpho GraphQL answer the site reads, unchanged",
+        "description": "Read time (ms since epoch) is in the x-escorpio-read-at header. The query is in site/src/data/morpho.ts.",
+        "responses": {
+          "200": { "description": "Morpho's answer", "content": { "application/json": { "schema": { "type": "object" } } } },
+          "502": { "$ref": "#/components/responses/Unavailable" }
+        }
+      }
+    }
+  },
+  "components": {
+    "responses": {
+      "Unavailable": {
+        "description": "Morpho could not be read right now",
+        "content": { "application/json": { "schema": { "type": "object", "properties": { "error": { "type": "string" }, "detail": { "type": "string" } } } } }
+      }
+    },
+    "schemas": {
+      "Note": {
+        "type": "object",
+        "properties": {
+          "text": { "type": "string" },
+          "stop": { "type": "boolean", "description": "A reason not to use it right now." }
+        }
+      },
+      "About": {
+        "type": "object",
+        "properties": {
+          "chainId": { "type": "integer", "const": 4663 },
+          "asset": { "type": "object", "properties": { "symbol": { "type": "string" }, "address": { "type": "string" } } },
+          "source": { "type": "string" },
+          "readAt": { "type": "string", "format": "date-time" },
+          "ageSeconds": { "type": "integer" },
+          "units": { "type": "object" },
+          "note": { "type": "string" }
+        }
+      },
+      "Vault": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "address": { "type": "string" },
+          "netApyPct": { "type": "number", "description": "Percent per year after the vault's fees." },
+          "totalUsd": { "type": "integer" },
+          "withdrawableUsd": { "type": "integer" },
+          "curators": { "type": "array", "items": { "type": "string" } },
+          "listedByMorpho": { "type": "boolean" },
+          "createdAt": { "type": ["string", "null"], "format": "date-time" },
+          "notes": { "type": "array", "items": { "$ref": "#/components/schemas/Note" } },
+          "explorer": { "type": "string" },
+          "page": { "type": "string" }
+        }
+      },
+      "Market": {
+        "type": "object",
+        "properties": {
+          "marketId": { "type": "string" },
+          "collateral": { "type": "object", "properties": { "symbol": { "type": "string" }, "name": { "type": "string" }, "address": { "type": "string" } } },
+          "liquidationLtvPct": { "type": "number" },
+          "borrowApyPct": { "type": "number" },
+          "supplyApyPct": { "type": "number" },
+          "suppliedUsd": { "type": "integer" },
+          "borrowedUsd": { "type": "integer" },
+          "freeToBorrowUsd": { "type": "integer" },
+          "usedPct": { "type": "number" },
+          "listedByMorpho": { "type": "boolean" },
+          "createdAt": { "type": ["string", "null"], "format": "date-time" },
+          "notes": { "type": "array", "items": { "$ref": "#/components/schemas/Note" } },
+          "page": { "type": "string" }
+        }
+      },
+      "Rates": {
+        "allOf": [
+          { "$ref": "#/components/schemas/About" },
+          {
+            "type": "object",
+            "properties": {
+              "bestOpenVault": { "oneOf": [{ "$ref": "#/components/schemas/Vault" }, { "type": "null" }] },
+              "openVaults": { "type": "array", "items": { "$ref": "#/components/schemas/Vault" } },
+              "cheapestLoanPerCollateral": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "collateral": { "type": "object" },
+                    "suppliedUsd": { "type": "integer" },
+                    "cheapest": { "oneOf": [{ "$ref": "#/components/schemas/Market" }, { "type": "null" }] }
+                  }
+                }
+              },
+              "widestGap": { "type": ["object", "null"] },
+              "counts": { "type": "object" },
+              "more": { "type": "object" }
+            }
+          }
+        ]
+      }
+    }
+  }
+}
