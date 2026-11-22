@@ -274,7 +274,7 @@
 .home-wrap .k-features-wrap > h2 { margin: 0 0 18px; font-family: var(--k-mono); font-size: 12px; font-weight: 400; font-stretch: 100%; letter-spacing: 0.08em; line-height: 1.4; text-transform: uppercase; color: var(--color-muted); }
 .k-features { display: grid; grid-template-columns: 1fr; gap: 1px; background: var(--color-line); border: 1px solid var(--color-line); }
 @media (min-width: 700px) { .k-features { grid-template-columns: repeat(2, 1fr); } }
-@media (min-width: 1000px) { .k-features { grid-template-columns: repeat(3, 1fr); } }
+/* Four live jobs, two by two; the roadmap below uses the same grid, so neither leaves an empty cell. */
 .k-feature { display: grid; grid-template-rows: subgrid; grid-row: span 3; row-gap: 16px; padding: 30px 28px 26px; background: #000; position: relative; isolation: isolate; overflow: hidden; transition: background-color 0.2s; }
 /* Faint picture behind the card, like the Earn/Borrow page backgrounds: under the text (z-index -1 inside the card's
    own stacking context), faded out towards the top left where the title sits. Brighter on hover. */
@@ -294,6 +294,10 @@
 .k-feature footer i { width: 7px; height: 7px; border-radius: 50%; background: var(--k); flex: none; }
 .k-feature footer svg { color: var(--k); flex: none; transition: translate 0.2s; }
 .k-feature.soon h3, .k-feature.soon footer { color: var(--color-muted); }
+/* Roadmap: same cards, greyed, under their own label, so nobody reads them as live. */
+.k-roadmap { margin-top: 40px; }
+.home-wrap .k-roadmap > h2 { margin: 0 0 18px; font-family: var(--k-mono); font-size: 12px; font-weight: 400; font-stretch: 100%; letter-spacing: 0.08em; line-height: 1.4; text-transform: uppercase; color: var(--color-muted); }
+.k-feature.soon footer span:before { content: ''; width: 7px; height: 7px; border: 1px solid var(--color-muted); flex: none; }
 /* Stretched link: the heading link covers the card; hover and focus are drawn on the card itself. */
 .k-feature a.card-link { color: inherit; }
 .k-feature a.card-link::after { content: ''; position: absolute; inset: 0; }

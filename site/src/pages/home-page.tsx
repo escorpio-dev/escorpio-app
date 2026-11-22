@@ -175,7 +175,9 @@ function Features() {
   const { desk } = useDesk()
   const now = desk?.readAt ?? 0
   const best = desk ? headlineVaults(desk)[0] : undefined
-  const loans = desk ? collaterals(desk).map((g) => ({ g, m: cheapest(g, 0, now) })).filter((x) => x.m) : []
+  // Same rule as the Borrow row below: collaterals with $30k+ lent and rates under 50%, so a tiny or stuck market
+  // never becomes the headline.
+  const loans = desk ? collaterals(desk, 30_000).map((g) => ({ g, m: cheapest(g, 0, now) })).filter((x) => x.m && x.m.borrowApy < 0.5) : []
   const low = loans.reduce<(typeof loans)[number] | undefined>((a, b) => (!a || b.m!.borrowApy < a.m!.borrowApy ? b : a), undefined)
   const flagged = desk ? desk.vaults.filter((v) => vaultNotes(v, now).some((n) => n.stop)).length : 0
   const list: Feature[] = [
@@ -208,6 +210,11 @@ function Features() {
       stat: desk ? `${flagged} of ${desk.vaults.length} vaults flagged now` : undefined,
     },
   ]
+  // Roadmap: not live. Shown under its own label, greyed, with no link and no number.
+  const next: Feature[] = [
+    { t: 'Receive with a link', d: 'Signed USDG payment links and invoices, each with a receipt read from the chain.', img: 'feat-receive' },
+    { t: 'Pay out', d: 'Payroll from a pasted list of addresses and amounts, checked line by line before one signature.', img: 'feat-payout' },
+  ]
   return (
     <section aria-labelledby="features-title" className="k-features-wrap">
       <h2 id="features-title" className="label">
@@ -215,7 +222,7 @@ function Features() {
       </h2>
       <div className="k-features">
         {list.map((f, i) => (
-          <article key={f.t} className={`k-feature${f.to ? '' : ' soon'}`}>
+          <article key={f.t} className="k-feature">
             <img src={`/media/${f.img}.webp`} alt="" width={800} height={640} loading="lazy" decoding="async" />
             <header>
               <span className="num">{String(i + 1).padStart(2, '0')}</span>
@@ -239,13 +246,29 @@ function Features() {
                   </span>
                   <ArrowSvg />
                 </>
-              ) : (
-                <span>Coming next</span>
-              )}
+              ) : null}
             </footer>
           </article>
         ))}
       </div>
+      <section aria-labelledby="roadmap-title" className="k-roadmap">
+        <h2 id="roadmap-title">Next on the desk · not live yet</h2>
+        <div className="k-features">
+          {next.map((f, i) => (
+            <article key={f.t} className="k-feature soon">
+              <img src={`/media/${f.img}.webp`} alt="" width={800} height={640} loading="lazy" decoding="async" />
+              <header>
+                <span className="num">Next {String(i + 1).padStart(2, '0')}</span>
+                <h3>{f.t}</h3>
+              </header>
+              <p>{f.d}</p>
+              <footer>
+                <span>Not live yet</span>
+              </footer>
+            </article>
+          ))}
+        </div>
+      </section>
     </section>
   )
 }
