@@ -11,6 +11,8 @@ export function onRequestGet() {
       '/api/markets': 'every USDG loan market, cheapest first (?collateral=<address or symbol>)',
       '/api/desk': 'the Morpho answer the site reads, unchanged, with the read time in the x-escorpio-read-at header',
     },
+    mcp: 'https://escorpio.pro/mcp',
+    openapi: 'https://escorpio.pro/openapi.json',
     method: 'https://escorpio.pro/method',
     code: 'https://github.com/escorpio-dev/escorpio-app',
     note: 'Readings, not advice. No key, no login, no tracking.',
