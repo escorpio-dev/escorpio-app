@@ -71,6 +71,11 @@ export function headlineVaults(d: Desk): Vault[] {
     .sort((a, b) => b.netApy - a.netApy)
 }
 
+/** The biggest vault among the headline ones: shown next to the best rate so a small vault never reads as the whole market. */
+export function biggestOpenVault(d: Desk): Vault | undefined {
+  return [...headlineVaults(d)].sort((a, b) => b.totalUsd - a.totalUsd)[0]
+}
+
 export type Collateral = {
   address: string
   symbol: string

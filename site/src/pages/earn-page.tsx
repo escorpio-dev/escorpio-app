@@ -4,7 +4,7 @@ import { PageHead } from '@/components/page-head'
 import { RiskNotes } from '@/components/risk-notes'
 import { StatStrip } from '@/components/stat-strip'
 import { TablePager } from '@/components/table-pager'
-import { headlineVaults, vaultNotes } from '@/data/desk'
+import { biggestOpenVault, headlineVaults, vaultNotes } from '@/data/desk'
 import type { Vault } from '@/data/morpho'
 import { age, pct, usd } from '@/lib/format'
 import { useDesk } from '@/lib/use-desk'
@@ -37,6 +37,7 @@ export function EarnPage() {
   const paged = usePage(rows, PAGE, `${sort}-${all}`)
   const hidden = desk ? desk.vaults.length - rows.length : 0
   const best = desk ? headlineVaults(desk)[0] : undefined
+  const big = desk ? biggestOpenVault(desk) : undefined
   const open = desk ? desk.vaults.filter((v) => isOpen(v, desk.readAt)) : []
 
   return (
@@ -54,9 +55,9 @@ export function EarnPage() {
       {desk && (
         <StatStrip
           stats={[
-            { k: 'Best open rate', v: best ? pct(best.netApy) : 'no data yet', sub: best?.name },
-            { k: 'USDG in vaults', v: usd(desk.vaults.reduce((s, v) => s + v.totalUsd, 0)), sub: `${desk.vaults.length} vaults read` },
-            { k: 'Open vaults', v: String(open.length), sub: `${desk.vaults.length - open.length} closed, stuck or tiny` },
+            { k: 'Best open rate', v: best ? pct(best.netApy) : 'no data yet', sub: best ? `${best.name}, ${usd(best.totalUsd)} inside` : undefined },
+            { k: 'Biggest open vault', v: big ? pct(big.netApy) : 'no data yet', sub: big ? `${big.name}, ${usd(big.totalUsd)} inside` : undefined },
+            { k: 'USDG in vaults', v: usd(desk.vaults.reduce((s, v) => s + v.totalUsd, 0)), sub: `${desk.vaults.length} vaults read, ${open.length} open` },
             { k: 'Withdrawable now', v: usd(open.reduce((s, v) => s + v.withdrawableUsd, 0)), sub: 'across the open vaults' },
           ]}
         />

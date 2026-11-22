@@ -1,7 +1,7 @@
 // Shared by the Pages Functions under functions/api: one reading of the Morpho API per minute, kept in this isolate's
 // memory and in Cloudflare's cache, so a burst of visitors or bots never turns into a burst of calls to Morpho.
 // Morpho's answer is kept byte for byte; every endpoint parses it with the same parseDesk the site uses.
-import { cheapest, collaterals, headlineVaults, marketNotes, vaultNotes, widestGap } from '../src/data/desk.ts'
+import { biggestOpenVault, cheapest, collaterals, headlineVaults, marketNotes, vaultNotes, widestGap } from '../src/data/desk.ts'
 import { CHAIN_ID, EXPLORER, MORPHO_API, USDG, fetchMorpho, parseDesk, type Desk, type Market, type Vault } from '../src/data/morpho.ts'
 
 export type Ctx = { request: Request; waitUntil(p: Promise<unknown>): void }
@@ -105,6 +105,11 @@ export function rates(d: Desk) {
   return {
     ...about(d),
     bestOpenVault: open[0] ? vaultOut(open[0], now) : null,
+    // Shown with the best rate so a small vault never reads as the whole market.
+    biggestOpenVault: (() => {
+      const b = biggestOpenVault(d)
+      return b ? vaultOut(b, now) : null
+    })(),
     openVaults: open.slice(0, 10).map((v) => vaultOut(v, now)),
     cheapestLoanPerCollateral: collaterals(d)
       .slice(0, 25)
