@@ -1,0 +1,34 @@
+# Escorpio
+
+> Escorpio is a USDG money desk on Robinhood Chain (chain id 4663). It compares Morpho vault rates and Morpho loans
+> against stock tokens, then lets people deposit, withdraw, borrow and repay from their own wallet. Escorpio never
+> holds funds and has no smart contract of its own. Nothing it shows is financial advice.
+
+## Public API
+
+No key, no login. JSON, open to any origin. Each reading is at most one minute old and says when it was read
+(`readAt`). Rates are percent per year, money is US dollars.
+
+- [GET /api/rates](https://escorpio.pro/api/rates): best open USDG vault, cheapest loan per collateral, widest rate gap
+- [GET /api/vaults](https://escorpio.pro/api/vaults): every USDG vault, best net rate first; `?open=1` for open ones only
+- [GET /api/markets](https://escorpio.pro/api/markets): every USDG loan market, cheapest first; `?collateral=<address or symbol>`
+- [GET /api/desk](https://escorpio.pro/api/desk): the raw Morpho answer the site reads, unchanged
+
+Every vault and market carries `notes`: risk notes in plain words. A note with `"stop": true` is a reason not to use
+it right now. No note does not mean safe.
+
+## Pages
+
+- [Home](https://escorpio.pro/): how much idle USDG would earn at today's best open vault rate
+- [Earn](https://escorpio.pro/earn): every USDG vault, deposit and withdraw
+- [Borrow](https://escorpio.pro/borrow): every USDG loan market per collateral, borrow and repay
+- [Method](https://escorpio.pro/method): where every number comes from and what each risk note means
+
+## Contracts
+
+- USDG: 0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168
+- Morpho Blue: 0x9D53d5E3bd5E8d4Cbfa6DB1ca238AEA02E651010
+
+## Code
+
+- [github.com/escorpio-dev/escorpio-app](https://github.com/escorpio-dev/escorpio-app) (MIT)

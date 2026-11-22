@@ -25,13 +25,15 @@ Receive (USDG payment links and invoices) and Pay out (payroll from a pasted lis
 ## How it works
 
 ```
-browser ──► Morpho API (rates, vaults, markets, risk warnings), read every 60 s
+browser ──► Escorpio API /api/desk ──► Morpho API (rates, vaults, markets, risk warnings), at most once a minute
         ──► Robinhood Chain RPC (your balances, simulations, receipts)
         ──► your wallet (EIP-6963) ──► Morpho vault / Morpho Blue
 ```
 
-- **No server.** The site is static files on Cloudflare Pages. Your browser reads the public Morpho API and the
-  public Robinhood Chain RPC directly; nobody can change a number on its way to you.
+- **No custody, almost no server.** The site is static files on Cloudflare Pages plus a few Pages Functions that read
+  the public Morpho API once a minute and pass its answer through unchanged. Your browser checks every row itself, and
+  falls back to Morpho directly if our API does not answer. Wallet reads and transactions go straight to the public
+  Robinhood Chain RPC.
 - **Simulated first.** Each step runs as an `eth_call` before the wallet opens. A deposit that still needs its
   approval, or a borrow before the collateral is in, is simulated with state overrides as if the earlier step were
   done, so you see whether the whole flow would pass before signing anything. Each step is simulated again, without
@@ -47,6 +49,24 @@ browser ──► Morpho API (rates, vaults, markets, risk warnings), read every
 Contracts used: USDG `0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168`, Morpho Blue
 `0x9D53d5E3bd5E8d4Cbfa6DB1ca238AEA02E651010`, and the Morpho vaults listed on the Earn page.
 
+## Public API
+
+No key, no login, JSON open to any origin. Every reading says when it was read; rates are percent per year.
+
+| Endpoint | What |
+|---|---|
+| [`/api/rates`](https://escorpio.pro/api/rates) | Best open vault, cheapest loan per collateral, widest rate gap |
+| [`/api/vaults`](https://escorpio.pro/api/vaults) | Every USDG vault, best net rate first (`?open=1` for open ones only) |
+| [`/api/markets`](https://escorpio.pro/api/markets) | Every USDG loan market, cheapest first (`?collateral=<address or symbol>`) |
+| [`/api/desk`](https://escorpio.pro/api/desk) | Morpho's answer exactly as the site reads it, read time in `x-escorpio-read-at` |
+
+```bash
+curl -s https://escorpio.pro/api/rates
+```
+
+A short guide for AI agents is at [`/llms.txt`](https://escorpio.pro/llms.txt). The code is in `site/functions/api`
+and `site/server/api.ts`.
+
 ## Run it locally
 
 Node.js 22.18 or newer (the check scripts run TypeScript directly).
@@ -56,6 +76,7 @@ cd site
 npm install
 npm run dev          # http://localhost:5173
 npm run build        # type check + production build into dist/
+npm run preview:pages  # dist/ plus the /api functions, http://localhost:4401
 ```
 
 ## Checks
