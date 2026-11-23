@@ -28,3 +28,19 @@ jobs:
       # eth_call state overrides (no wallet, no money).
       - name: Desk, deposit and borrow checks
         run: npm test
+
+  alerts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: alerts/package-lock.json
+      - run: npm ci
+        working-directory: alerts
+      # Commands, matching, limits, stale guard, holder linking, digest, and the Worker against an in-memory SQLite.
+      - name: Alert checks
+        working-directory: alerts
+        run: node --no-warnings scripts/check-alerts.ts

@@ -9,12 +9,14 @@ import { BorrowPage } from '@/pages/borrow-page'
 import { EarnPage } from '@/pages/earn-page'
 import { HomePage } from '@/pages/home-page'
 import { MethodPage } from '@/pages/method-page'
+import { LinkPage } from '@/pages/link-page'
 
 const TITLES: Record<string, string> = {
   '/': 'Escorpio · the USDG desk on Robinhood Chain',
   '/earn': 'Earn · USDG vault rates · Escorpio',
   '/borrow': 'Borrow · USDG loan rates · Escorpio',
   '/method': 'Method · Escorpio',
+  '/link': 'Link your wallet · Escorpio alerts',
 }
 
 function RouteEffects() {
@@ -52,6 +54,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/earn" element={<EarnPage />} />
           <Route path="/borrow" element={<BorrowPage />} />
           <Route path="/method" element={<MethodPage />} />
+          <Route path="/link" element={<LinkPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </div>

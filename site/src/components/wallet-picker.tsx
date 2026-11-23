@@ -4,11 +4,13 @@ import { useState } from 'react'
 
 // The wallets this browser has, by the name and icon each wallet gives itself. One click asks that wallet for an
 // address; nothing is signed here.
-export function WalletPicker() {
+const DEFAULT_LEAD = 'Connect the wallet that holds your USDG. Escorpio only reads its address; every transaction is signed in the wallet.'
+
+export function WalletPicker({ lead = DEFAULT_LEAD }: { lead?: string }) {
   const { wallets, connecting, error } = useWallet()
   return (
     <div>
-      <p className="text-[16px] text-body">Connect the wallet that holds your USDG. Escorpio only reads its address; every transaction is signed in the wallet.</p>
+      <p className="text-[16px] text-body">{lead}</p>
       {wallets.length ? (
         <ul className="mt-4 grid gap-2">
           {wallets.map((w) => (

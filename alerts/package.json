@@ -1,0 +1,12 @@
+{
+  "name": "escorpio-alerts",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "node --no-warnings scripts/check-alerts.ts",
+    "deploy": "npx wrangler deploy"
+  },
+  "dependencies": {
+    "viem": "2.58.1"
+  }
+}
