@@ -1,0 +1,29 @@
+# escorpio-alerts: Telegram rate alerts (stage 1 of the token utility plan, launch-kit/LAUNCH.md).
+# Before the first deploy (owner): create the bot with @BotFather, then
+#   npx wrangler d1 create escorpio-alerts        -> paste the database_id below
+#   npx wrangler d1 execute escorpio-alerts --remote --file=schema.sql   (existing DB: --file=migrations/0002_holders.sql)
+#   npx wrangler secret put TELEGRAM_BOT_TOKEN
+#   npx wrangler secret put TELEGRAM_WEBHOOK_SECRET
+name = "escorpio-alerts"
+main = "src/index.ts"
+compatibility_date = "2026-11-01"
+# Never on *.reinkeep.workers.dev (the account's workers.dev subdomain belongs to Reinkeep): own subdomain only.
+workers_dev = false
+routes = [{ pattern = "alerts.escorpio.pro", custom_domain = true }]
+
+[vars]
+DESK_URL = "https://escorpio.pro/api/desk"
+SITE_ORIGIN = "https://escorpio.pro"
+RPC_URL = "https://rpc.mainnet.chain.robinhood.com"
+# Holder perks stay off while these are empty. Launch day: the $ESCORPIO address, and the threshold in raw token
+# units (18 decimals: 100000 tokens = "100000000000000000000000"). Announce the threshold before changing it.
+TOKEN_ADDRESS = ""
+HOLDER_MIN = ""
+
+[triggers]
+crons = ["* * * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "escorpio-alerts"
+database_id = "98b5075f-6906-4b55-a727-38283f627807"

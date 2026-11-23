@@ -3,7 +3,7 @@
 # reads: the Morpho API and the Robinhood Chain RPC. Wallet extensions inject through their own content scripts,
 # which this policy does not block. Wallet icons arrive as data: images.
 /*
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self'; font-src 'self'; connect-src 'self' https://api.morpho.org https://rpc.mainnet.chain.robinhood.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self'; font-src 'self'; connect-src 'self' https://api.morpho.org https://rpc.mainnet.chain.robinhood.com https://alerts.escorpio.pro; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'
   X-Frame-Options: DENY
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
