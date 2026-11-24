@@ -1,5 +1,8 @@
 import { Link } from 'react-router'
 import { ArrowSvg } from '@/components/arrow-svg'
+import { GITHUB_URL, GithubIcon, X_HANDLE, X_URL, XIcon } from '@/components/brand-icons'
+import { TelegramIcon } from '@/components/telegram-icon'
+import { ALERTS_BOT } from '@/data/alerts-link'
 import { EXPLORER, USDG } from '@/data/morpho'
 
 const ext = { target: '_blank', rel: 'noopener noreferrer' } as const
@@ -27,6 +30,15 @@ export function SiteFooter() {
             <li><Link to="/earn">Earn</Link></li>
             <li><Link to="/borrow">Borrow</Link></li>
             <li><Link to="/method">Method</Link></li>
+            <li><Link to="/stats">Stats</Link></li>
+          </ul>
+        </div>
+        <div className="col k-fixed">
+          <h3>Follow</h3>
+          <ul>
+            <li><a href={X_URL} {...ext} className="k-logo-line"><XIcon size={15} />{X_HANDLE}</a></li>
+            <li><a href={GITHUB_URL} {...ext} className="k-logo-line"><GithubIcon size={15} />GitHub</a></li>
+            <li><a href={`https://t.me/${ALERTS_BOT}`} {...ext} className="k-logo-line"><TelegramIcon size={15} />Rate alerts</a></li>
           </ul>
         </div>
         <div className="col k-fixed">

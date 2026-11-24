@@ -10,6 +10,7 @@ export function onRequestGet() {
       '/api/vaults': 'every USDG vault, best net rate first (?open=1 for open ones only)',
       '/api/markets': 'every USDG loan market, cheapest first (?collateral=<address or symbol>)',
       '/api/desk': 'the Morpho answer the site reads, unchanged, with the read time in the x-escorpio-read-at header',
+      '/api/stats': 'escorpio.pro traffic per UTC day since launch, as Cloudflare counts it (bots included), read every 10 minutes',
     },
     mcp: 'https://escorpio.pro/mcp',
     openapi: 'https://escorpio.pro/openapi.json',

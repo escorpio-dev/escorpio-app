@@ -10,6 +10,9 @@ import { EarnPage } from '@/pages/earn-page'
 import { HomePage } from '@/pages/home-page'
 import { MethodPage } from '@/pages/method-page'
 import { LinkPage } from '@/pages/link-page'
+import { StatsPage } from '@/pages/stats-page'
+import { TokenPage } from '@/pages/token-page'
+import { TOKEN_LIVE } from '@/data/token'
 
 const TITLES: Record<string, string> = {
   '/': 'Escorpio · the USDG desk on Robinhood Chain',
@@ -17,6 +20,8 @@ const TITLES: Record<string, string> = {
   '/borrow': 'Borrow · USDG loan rates · Escorpio',
   '/method': 'Method · Escorpio',
   '/link': 'Link your wallet · Escorpio alerts',
+  '/stats': 'Stats · site traffic · Escorpio',
+  ...(TOKEN_LIVE ? { '/token': '$ESCORPIO · the Escorpio token' } : {}),
 }
 
 function RouteEffects() {
@@ -55,6 +60,8 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/borrow" element={<BorrowPage />} />
           <Route path="/method" element={<MethodPage />} />
           <Route path="/link" element={<LinkPage />} />
+          <Route path="/stats" element={<StatsPage />} />
+          {TOKEN_LIVE && <Route path="/token" element={<TokenPage />} />}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </div>
