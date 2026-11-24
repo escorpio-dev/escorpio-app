@@ -362,6 +362,7 @@
 /* Phones: the marks live in the footer only, so Earn, Borrow, Method (and Token after launch) fit on one line. */
 @media (max-width: 559px) {
   .header ul li.k-social { display: none; }
+  .header ul.has-token li.k-nav-method { display: none; }
   .header ul li { margin-left: 14px; }
   .header ul a { font-size: 15px; }
 }
