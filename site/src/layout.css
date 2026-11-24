@@ -387,8 +387,6 @@ section > .k-stats-h:first-child { margin-top: 0; }
 .k-stats-list li code { color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .k-stats-list li span { flex: none; font-variant-numeric: tabular-nums; }
 .k-stats-list p { font-family: var(--k-mono); font-size: 14px; color: var(--color-muted); }
-.k-stats-read { margin-top: 14px; font-size: 14px; color: #9f9f9f; }
-.k-stats-read .live-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--k); margin-right: 6px; vertical-align: middle; }
 .k-stats-empty { font-family: var(--k-mono); color: var(--color-muted); border: 1px solid #444; padding: 28px; }
 .k-stats-tiles { display: grid; grid-template-columns: 1fr; gap: 1px; background: #444; border: 1px solid #444; }
 @media (min-width: 560px) { .k-stats-tiles { grid-template-columns: 1fr 1fr; } }
