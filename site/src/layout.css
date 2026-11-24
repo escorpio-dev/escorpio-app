@@ -375,9 +375,15 @@
 }
 .k-telegram { display: inline-flex; align-items: center; gap: 10px; font-family: var(--k-mono); font-size: 15px; }
 
-/* Rate axis (components/rate-axis.tsx): other markets are dark dots with a thin edge, so only the cheapest (lime) stands out. */
-.k-axis-dot { background: #050505; box-shadow: inset 0 0 0 1px #4a4a4a; }
-button:hover > .k-axis-dot, button:focus-visible > .k-axis-dot { box-shadow: inset 0 0 0 1px var(--k); }
+/* Rate axis (components/rate-axis.tsx): a slider. Thin ticks per market, the cheapest lime, the picked one a lime handle. */
+.k-axis-track { position: absolute; left: 0; right: 0; bottom: 28px; height: 2px; background: #333; border-radius: 1px; }
+.k-axis-hit { position: absolute; bottom: 29px; width: 14px; height: 30px; translate: -50% 50%; display: flex; align-items: center; justify-content: center; background: none; border: 0; padding: 0; cursor: pointer; }
+.k-axis-tick { display: block; width: 2px; height: 14px; border-radius: 1px; background: #6b6b6b; transition: 0.15s background-color, 0.15s height; }
+.k-axis-tick.low { background: var(--k); }
+.k-axis-hit:hover .k-axis-tick, .k-axis-hit:focus-visible .k-axis-tick { background: var(--k); height: 20px; }
+.k-axis-hit:focus-visible { outline: none; }
+.k-axis-handle { display: block; width: 16px; height: 16px; border-radius: 50%; background: var(--k); box-shadow: 0 0 0 3px #000, 0 0 0 4px var(--k); }
+.k-axis-hit:focus-visible .k-axis-handle { box-shadow: 0 0 0 3px #000, 0 0 0 5px #fff; }
 
 /* /stats (pages/stats-page.tsx): Cloudflare traffic. One series, lime bars on black, recessive axis. */
 .k-stats-h { margin-top: 64px; font-family: var(--k-mono); font-size: 13px; font-weight: 400; text-transform: uppercase; letter-spacing: 0.08em; color: var(--k); }
