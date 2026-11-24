@@ -59,7 +59,7 @@ export function RateAxis({
               style={{ left: `${x}%`, bottom: 30 + lane * LANE }}
             >
               <span
-                className={`block rounded-full transition-transform duration-200 hover:scale-110 ${low ? 'bg-accent' : 'bg-body/60'} ${sel ? 'ring-2 ring-white ring-offset-2 ring-offset-black' : ''}`}
+                className={`block rounded-full transition duration-200 hover:scale-110 ${low ? 'bg-accent' : 'k-axis-dot'} ${sel ? 'ring-2 ring-accent ring-offset-2 ring-offset-black' : ''}`}
                 style={{ width: d, height: d }}
               />
             </button>

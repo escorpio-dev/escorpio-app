@@ -375,6 +375,10 @@
 }
 .k-telegram { display: inline-flex; align-items: center; gap: 10px; font-family: var(--k-mono); font-size: 15px; }
 
+/* Rate axis (components/rate-axis.tsx): other markets are dark dots with a thin edge, so only the cheapest (lime) stands out. */
+.k-axis-dot { background: #050505; box-shadow: inset 0 0 0 1px #4a4a4a; }
+button:hover > .k-axis-dot, button:focus-visible > .k-axis-dot { box-shadow: inset 0 0 0 1px var(--k); }
+
 /* /stats (pages/stats-page.tsx): Cloudflare traffic. One series, lime bars on black, recessive axis. */
 .k-stats-h { margin-top: 64px; font-family: var(--k-mono); font-size: 13px; font-weight: 400; text-transform: uppercase; letter-spacing: 0.08em; color: var(--k); }
 section > .k-stats-h:first-child { margin-top: 0; }
