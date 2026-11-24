@@ -12,16 +12,18 @@ export function SiteNav() {
           <Link to="/" className="logo" aria-label="Escorpio home">
             <EscorpioWordmark />
           </Link>
-          <ul>
+          {/* With Token added after launch, phones drop Method from the header (it stays in the footer and on home). */}
+          <ul className={TOKEN_LIVE ? 'has-token' : undefined}>
             {(
               [
                 ['/earn', 'Earn'],
                 ['/borrow', 'Borrow'],
                 ['/method', 'Method'],
+                ['/stats', 'Stats'],
                 ...(TOKEN_LIVE ? [['/token', 'Token']] : []),
               ] as [string, string][]
             ).map(([to, name]) => (
-              <li key={to}>
+              <li key={to} className={to === '/method' ? 'k-nav-method' : undefined}>
                 <NavLink to={to}>{name}</NavLink>
               </li>
             ))}
