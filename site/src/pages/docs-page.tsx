@@ -58,7 +58,7 @@ export function DocsPage() {
         ))}
       </nav>
 
-      <div className="mt-10 grid gap-x-16 lg:grid-cols-[14rem_1fr]">
+      <div className="mt-10 grid grid-cols-[minmax(0,1fr)] gap-x-16 lg:grid-cols-[14rem_minmax(0,1fr)]">
         <Block id="mcp" title="MCP server">
           <p>Remote MCP server, Streamable HTTP, no authentication, read-only tools:</p>
           <Code text={MCP_URL} />
@@ -191,7 +191,7 @@ function Block({ id, title, mark, children }: { id: string; title: string; mark?
         {mark && <span className="k-docs-mark">{mark}</span>}
         {title}
       </h2>
-      <div className="max-w-2xl min-w-0 border-line pb-10 pt-3 leading-relaxed text-body lg:border-t lg:border-line-2 lg:pt-6">{children}</div>
+      <div className="max-w-2xl min-w-0 border-line pb-10 pt-3 leading-relaxed text-body [overflow-wrap:anywhere] lg:border-t lg:border-line-2 lg:pt-6">{children}</div>
     </>
   )
 }
