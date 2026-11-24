@@ -22,7 +22,7 @@ export function MethodPage() {
         data yet" when the source does not answer.
       </PageHead>
 
-      <div className="mt-14 grid gap-x-16 lg:grid-cols-[14rem_1fr]">
+      <div className="mt-14 grid grid-cols-[minmax(0,1fr)] gap-x-16 lg:grid-cols-[14rem_minmax(0,1fr)]">
         <Block title="Where it comes from">
           <p>
             Escorpio's own API reads the public Morpho API (<code className="num text-[0.9em]">{MORPHO_API}</code>) at most once a
@@ -174,7 +174,7 @@ function Block({ title, children }: { title: string; children: ReactNode }) {
   return (
     <>
       <h2 className="h-cond !text-[clamp(2rem,4vw,3rem)] border-t border-line-2 pt-5 text-[1.6rem] lg:pb-10">{title}</h2>
-      <div className="max-w-2xl border-line pb-10 pt-3 leading-relaxed text-body lg:border-t lg:border-line-2 lg:pt-6">{children}</div>
+      <div className="max-w-2xl min-w-0 border-line pb-10 pt-3 leading-relaxed text-body [overflow-wrap:anywhere] lg:border-t lg:border-line-2 lg:pt-6">{children}</div>
     </>
   )
 }

@@ -1,0 +1,5 @@
+# escorpio.pro: everything is public and read-only. Agents: see /llms.txt and /docs.
+User-agent: *
+Allow: /
+
+Sitemap: https://escorpio.pro/sitemap.xml
