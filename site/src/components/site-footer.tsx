@@ -31,6 +31,7 @@ export function SiteFooter() {
             <li><Link to="/borrow">Borrow</Link></li>
             <li><Link to="/method">Method</Link></li>
             <li><Link to="/stats">Stats</Link></li>
+            <li><Link to="/docs">Docs</Link></li>
           </ul>
         </div>
         <div className="col k-fixed">

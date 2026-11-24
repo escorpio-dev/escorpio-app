@@ -1,0 +1,9 @@
+# Cloudflare Pages config for escorpio.pro. Secrets (CF_ANALYTICS_TOKEN) stay in the dashboard and are not listed here.
+name = "escorpio"
+pages_build_output_dir = "./dist"
+compatibility_date = "2026-11-19"
+
+# MCP and API call counts for /stats (server/usage.ts). Read back through the Analytics Engine SQL API.
+[[analytics_engine_datasets]]
+binding = "USAGE"
+dataset = "escorpio_usage"

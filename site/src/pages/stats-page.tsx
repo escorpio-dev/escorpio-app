@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react'
 import { PageHead } from '@/components/page-head'
+import { headlineVaults } from '@/data/desk'
+import { ago, pct, usd } from '@/lib/format'
+import { useDesk, useNow } from '@/lib/use-desk'
 
 // /stats: escorpio.pro traffic as Cloudflare counts it (functions/api/stats.ts, server/stats.ts). Only counted
 // numbers, passed through unchanged; bots are included and the page says so. Read again every 10 minutes.
@@ -17,6 +20,16 @@ type Traffic = {
   today: Day | null
   yesterday: Day | null
   busiest: Day | null
+  usage?: Usage | { error: string }
+}
+// MCP and API calls from outside the site, counted by Escorpio itself (server/usage.ts, server/stats.ts).
+type Usage = {
+  since: string | null
+  days: { date: string; mcp: number; api: number }[]
+  totals: { toolCalls: number; mcpRequests: number; connections: number; api: number }
+  tools: { name: string; calls: number }[]
+  clients: { name: string; connections: number }[]
+  paths: { path: string; calls: number }[]
 }
 type State = { kind: 'loading' } | { kind: 'off' } | { kind: 'error' } | { kind: 'ok'; t: Traffic }
 
@@ -86,11 +99,14 @@ export function StatsPage() {
   const state = useTraffic()
   return (
     <main className="wrap pb-28 pt-[130px] lg:pt-[180px]">
-      <PageHead kicker="Stats" title="Who reads the desk">
-        Traffic on escorpio.pro since it went live on 22 November, as Cloudflare counts it at the edge. The site has no cookies and no
-        tracking script. Bots and crawlers are counted too, and every number below says what it counts.
+      <PageHead kicker="Stats" title="Who reads the desk" bg="bg-stats">
+        What the desk reads right now, and how many people read it. Every number is counted, not estimated: the desk from
+        Morpho this minute, the traffic from Cloudflare's edge. The site has no cookies and no tracking script.
       </PageHead>
-      <div className="mt-14">
+      <DeskNow />
+      <AgentUse state={state} />
+      <h2 className="k-stats-h">Site traffic since 22 November</h2>
+      <div className="mt-6">
         {state.kind === 'ok' ? (
           <Traffic t={state.t} />
         ) : (
@@ -104,6 +120,110 @@ export function StatsPage() {
         )}
       </div>
     </main>
+  )
+}
+
+// The desk this minute, the same reading and sums the home page uses (useDesk, headlineVaults).
+function DeskNow() {
+  const { desk } = useDesk()
+  const now = useNow()
+  const total = desk ? desk.vaults.reduce((s, v) => s + v.totalUsd, 0) : 0
+  const best = desk ? headlineVaults(desk)[0] : undefined
+  return (
+    <section className="mt-14" aria-labelledby="desk-now">
+      <h2 id="desk-now" className="k-stats-h">
+        The desk right now
+      </h2>
+      {desk ? (
+        <>
+          <div className="k-stats-tiles mt-6">
+            <Tile label="USDG loan markets read" value={desk.markets.length} note="every Morpho market lending USDG" live />
+            <Tile label="USDG vaults read" value={desk.vaults.length} note="every Morpho vault holding USDG" />
+            <TextTile label="USDG in those vaults" value={usd(total)} note="sum of every vault's size" />
+            <TextTile label="Best open vault" value={best ? pct(best.netApy) : 'none open'} note={best ? `${best.name}, ${usd(best.totalUsd)} inside` : 'no open vault right now'} />
+          </div>
+          <p className="k-stats-read">
+            <span className="live-dot" aria-hidden /> Read {ago(desk.readAt, now)} from the Morpho API, again every minute.{' '}
+            <a href="/earn" className="accent-link">
+              Compare every vault
+            </a>
+          </p>
+        </>
+      ) : (
+        <p className="k-stats-empty mt-6">Reading every USDG market and vault on Robinhood Chain…</p>
+      )}
+    </section>
+  )
+}
+
+// AI agents using the desk: MCP tool calls and connections by app, and API calls, all from outside the site.
+function AgentUse({ state }: { state: State }) {
+  const u = state.kind === 'ok' ? state.t.usage : undefined
+  const ready = u && !('error' in u)
+  return (
+    <section className="mt-16" aria-labelledby="agent-use">
+      <h2 id="agent-use" className="k-stats-h">
+        Used by AI agents{ready && u.since ? ` since ${day(u.since)}` : ''}
+      </h2>
+      {!ready ? (
+        <p className="k-stats-empty mt-6">
+          {state.kind === 'loading' ? 'Reading the counts…' : 'Agent call counts are not connected yet.'}
+        </p>
+      ) : !u.since ? (
+        <p className="k-stats-empty mt-6">Counting is on. No MCP or API call from outside the site yet.</p>
+      ) : (
+        <>
+          <div className="k-stats-tiles mt-6">
+            <Tile label="MCP tool calls" value={u.totals.toolCalls} note="agents asking the desk a question" live />
+            <Tile label="MCP connections" value={u.totals.connections} note="an agent app starting a session" />
+            <Tile label="Agent apps" value={u.clients.length} note="different apps by the name they send" />
+            <Tile label="API calls" value={u.totals.api} note="GET /api from outside this site" />
+          </div>
+          <div className="k-stats-lists">
+            <StatList title="Apps that connected" rows={u.clients.map((c) => [c.name, c.connections])} empty="none yet" />
+            <StatList title="Tools agents call" rows={u.tools.map((t) => [t.name, t.calls])} empty="none yet" />
+            <StatList title="API endpoints" rows={u.paths.map((p) => [p.path, p.calls])} empty="none yet" />
+          </div>
+          <p className="k-stats-read">
+            Counted by Escorpio on every call, without IPs or request contents; the site's own reads are left out. Apps are
+            named by what they send in the MCP handshake.{' '}
+            <a href="/docs" className="accent-link">
+              Connect your agent
+            </a>
+          </p>
+        </>
+      )}
+    </section>
+  )
+}
+
+function StatList({ title, rows, empty }: { title: string; rows: [string, number][]; empty: string }) {
+  return (
+    <div className="k-stats-list">
+      <h3>{title}</h3>
+      {rows.length ? (
+        <ol>
+          {rows.map(([name, n]) => (
+            <li key={name}>
+              <code>{name}</code>
+              <span>{n.toLocaleString('en-US')}</span>
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <p>{empty}</p>
+      )}
+    </div>
+  )
+}
+
+function TextTile({ label, value, note }: { label: string; value: string; note: string }) {
+  return (
+    <div className="k-stats-tile">
+      <span className="k-stats-label">{label}</span>
+      <strong>{value}</strong>
+      <span className="k-stats-note">{note}</span>
+    </div>
   )
 }
 
