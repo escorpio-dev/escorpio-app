@@ -375,15 +375,19 @@
 }
 .k-telegram { display: inline-flex; align-items: center; gap: 10px; font-family: var(--k-mono); font-size: 15px; }
 
-/* Rate axis (components/rate-axis.tsx): a slider. Thin ticks per market, the cheapest lime, the picked one a lime handle. */
-.k-axis-track { position: absolute; left: 0; right: 0; bottom: 28px; height: 2px; background: #333; border-radius: 1px; }
-.k-axis-hit { position: absolute; bottom: 29px; width: 14px; height: 30px; translate: -50% 50%; display: flex; align-items: center; justify-content: center; background: none; border: 0; padding: 0; cursor: pointer; }
-.k-axis-tick { display: block; width: 2px; height: 14px; border-radius: 1px; background: #6b6b6b; transition: 0.15s background-color, 0.15s height; }
-.k-axis-tick.low { background: var(--k); }
-.k-axis-hit:hover .k-axis-tick, .k-axis-hit:focus-visible .k-axis-tick { background: var(--k); height: 20px; }
+/* Rate axis (components/rate-axis.tsx): a filled slider. Lime fill to the picked market, its rate in a bubble above
+   the handle; other markets are small dots, the cheapest lime. */
+.k-axis-track, .k-axis-fill { position: absolute; left: 0; bottom: 27px; height: 4px; border-radius: 2px; }
+.k-axis-track { right: 0; background: #2b2b2b; }
+.k-axis-fill { background: var(--k); transition: width 0.25s ease; }
+.k-axis-bubble { position: absolute; bottom: 48px; padding: 3px 8px; border-radius: 4px; background: var(--k); color: #101010; font-family: var(--k-mono); font-size: 13px; line-height: 1.3; white-space: nowrap; transition: left 0.25s ease; }
+.k-axis-hit { position: absolute; bottom: 29px; width: 22px; height: 22px; translate: -50% 50%; display: flex; align-items: center; justify-content: center; background: none; border: 0; padding: 0; cursor: pointer; }
 .k-axis-hit:focus-visible { outline: none; }
-.k-axis-handle { display: block; width: 16px; height: 16px; border-radius: 50%; background: var(--k); box-shadow: 0 0 0 3px #000, 0 0 0 4px var(--k); }
-.k-axis-hit:focus-visible .k-axis-handle { box-shadow: 0 0 0 3px #000, 0 0 0 5px #fff; }
+.k-axis-dot { display: block; width: 8px; height: 8px; border-radius: 50%; background: #6b6b6b; box-shadow: 0 0 0 2px #000; transition: 0.15s transform, 0.15s background-color; }
+.k-axis-dot.low { background: var(--k); }
+.k-axis-hit:hover .k-axis-dot, .k-axis-hit:focus-visible .k-axis-dot { background: var(--k); transform: scale(1.4); }
+.k-axis-handle { display: block; width: 20px; height: 20px; border-radius: 50%; background: var(--k); box-shadow: inset 0 0 0 4px #000, 0 0 0 1px var(--k); }
+.k-axis-hit:focus-visible .k-axis-handle { box-shadow: inset 0 0 0 4px #000, 0 0 0 1px var(--k), 0 0 0 4px #fff; }
 
 /* /stats (pages/stats-page.tsx): Cloudflare traffic. One series, lime bars on black, recessive axis. */
 .k-stats-h { margin-top: 64px; font-family: var(--k-mono); font-size: 13px; font-weight: 400; text-transform: uppercase; letter-spacing: 0.08em; color: var(--k); }
