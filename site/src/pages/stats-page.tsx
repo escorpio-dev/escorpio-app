@@ -89,7 +89,7 @@ export function StatsPage() {
   const state = useTraffic()
   return (
     <main className="wrap pb-28 pt-[130px] lg:pt-[180px]">
-      <PageHead kicker="Stats" title="Who reads the desk">
+      <PageHead kicker="Stats" title="Who reads the desk" bg="bg-stats">
         What the desk reads right now, and how many people read it. Every number is counted, not estimated: the desk from
         Morpho this minute, the traffic from Cloudflare's edge. The site has no cookies and no tracking script.
       </PageHead>

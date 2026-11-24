@@ -34,7 +34,7 @@ export function DocsPage() {
 
   return (
     <main className="wrap pb-28 pt-[130px] lg:pt-[180px]">
-      <PageHead kicker="Docs" title="Plug Escorpio into your agent">
+      <PageHead kicker="Docs" title="Plug Escorpio into your agent" bg="bg-docs">
         One read-only MCP server, one agent skill and a public JSON API, all reading the same live desk. No key, no
         sign-up. Agents read; the deposit or loan still happens on escorpio.pro, in the person's own wallet.
       </PageHead>

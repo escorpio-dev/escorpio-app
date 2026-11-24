@@ -359,10 +359,13 @@
 .header ul li.k-social a:hover, .header ul li.k-social a:focus-visible { color: var(--k); text-decoration: none; }
 .header ul li.k-social { margin-left: 18px; }
 .header ul li.k-social + li.k-social { margin-left: 14px; }
-/* Phones: the marks live in the footer only, so Earn, Borrow, Method (and Token after launch) fit on one line. */
-@media (max-width: 559px) {
+/* Under 700px the X and GitHub marks live in the footer only, so the page links fit on one line. */
+@media (max-width: 699px) { .header ul li.k-social { display: none; } }
+/* Phones: four links at most (see site-nav.tsx). */
+@media (max-width: 599px) {
   .header ul li.k-social { display: none; }
-  .header ul.has-token li.k-nav-method { display: none; }
+  .header ul li.k-nav-method { display: none; }
+  .header ul.has-token li.k-nav-stats { display: none; }
   .header ul li { margin-left: 14px; }
   .header ul a { font-size: 15px; }
 }
