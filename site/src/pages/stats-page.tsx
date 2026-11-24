@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { PageHead } from '@/components/page-head'
 import { headlineVaults } from '@/data/desk'
-import { ago, pct, usd } from '@/lib/format'
-import { useDesk, useNow } from '@/lib/use-desk'
+import { pct, usd } from '@/lib/format'
+import { useDesk } from '@/lib/use-desk'
 
 // /stats: escorpio.pro traffic as Cloudflare counts it (functions/api/stats.ts, server/stats.ts). Only counted
 // numbers, passed through unchanged; bots are included and the page says so. Read again every 10 minutes.
@@ -40,11 +40,6 @@ const day = (iso: string) =>
     day: 'numeric',
     month: 'short',
     timeZone: 'UTC',
-  })
-const clock = (iso: string) =>
-  new Date(iso).toLocaleTimeString('en-GB', {
-    hour: '2-digit',
-    minute: '2-digit',
   })
 const reduced = () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
@@ -126,7 +121,6 @@ export function StatsPage() {
 // The desk this minute, the same reading and sums the home page uses (useDesk, headlineVaults).
 function DeskNow() {
   const { desk } = useDesk()
-  const now = useNow()
   const total = desk ? desk.vaults.reduce((s, v) => s + v.totalUsd, 0) : 0
   const best = desk ? headlineVaults(desk)[0] : undefined
   return (
@@ -142,12 +136,6 @@ function DeskNow() {
             <TextTile label="USDG in those vaults" value={usd(total)} note="sum of every vault's size" />
             <TextTile label="Best open vault" value={best ? pct(best.netApy) : 'none open'} note={best ? `${best.name}, ${usd(best.totalUsd)} inside` : 'no open vault right now'} />
           </div>
-          <p className="k-stats-read">
-            <span className="live-dot" aria-hidden /> Read {ago(desk.readAt, now)} from the Morpho API, again every minute.{' '}
-            <a href="/earn" className="accent-link">
-              Compare every vault
-            </a>
-          </p>
         </>
       ) : (
         <p className="k-stats-empty mt-6">Reading every USDG market and vault on Robinhood Chain…</p>
@@ -184,13 +172,6 @@ function AgentUse({ state }: { state: State }) {
             <StatList title="Tools agents call" rows={u.tools.map((t) => [t.name, t.calls])} empty="none yet" />
             <StatList title="API endpoints" rows={u.paths.map((p) => [p.path, p.calls])} empty="none yet" />
           </div>
-          <p className="k-stats-read">
-            Counted by Escorpio on every call, without IPs or request contents; the site's own reads are left out. Apps are
-            named by what they send in the MCP handshake.{' '}
-            <a href="/docs" className="accent-link">
-              Connect your agent
-            </a>
-          </p>
         </>
       )}
     </section>
@@ -269,20 +250,6 @@ function Traffic({ t }: { t: Traffic }) {
           </table>
         </div>
       </details>
-      <div className="k-stats-notes">
-        <p>
-          <span className="live-dot" aria-hidden /> Read {clock(t.readAt)}, from Cloudflare's zone analytics. Read again every 10 minutes.{' '}
-          {n(t.totals.requests)} requests in all since {day(t.since)}, pictures, scripts and API calls included.
-        </p>
-        <p>
-          Visitors are unique IP addresses per day, so the same person on two days counts twice and people behind one network count once;
-          they are not added up across days. The same numbers as JSON:{' '}
-          <a href="/api/stats" className="accent-link">
-            /api/stats
-          </a>
-          .
-        </p>
-      </div>
     </>
   )
 }
