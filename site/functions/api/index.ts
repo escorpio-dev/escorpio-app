@@ -16,6 +16,6 @@ export function onRequestGet() {
     openapi: 'https://escorpio.pro/openapi.json',
     method: 'https://escorpio.pro/method',
     code: 'https://github.com/escorpio-dev/escorpio-app',
-    note: 'Readings, not advice. No key, no login, no tracking.',
+    note: 'Readings, not advice. No key, no login, no tracking. Calls are counted for https://escorpio.pro/stats (which endpoint or tool, no IP, no request contents).',
   })
 }

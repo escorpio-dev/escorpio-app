@@ -2,6 +2,7 @@
 // No sessions and no server-sent stream, so GET answers 405 as the spec allows. Read-only tools, see server/mcp.ts.
 import { readDesk, type Ctx } from '../server/api.ts'
 import { SUPPORTED_VERSIONS, handle } from '../server/mcp.ts'
+import { mcpCalls, record, sourceOf, type UsageEnv } from '../server/usage.ts'
 
 const CORS = {
   'access-control-allow-origin': '*',
@@ -27,7 +28,7 @@ export function onRequestGet() {
   )
 }
 
-export async function onRequestPost(ctx: Ctx) {
+export async function onRequestPost(ctx: Ctx & { env?: UsageEnv }) {
   const version = ctx.request.headers.get('mcp-protocol-version')
   if (version && !SUPPORTED_VERSIONS.includes(version)) return rpcError(-32600, `Unsupported MCP-Protocol-Version: ${version}`)
   const text = await ctx.request.text()
@@ -38,6 +39,8 @@ export async function onRequestPost(ctx: Ctx) {
   } catch {
     return rpcError(-32700, 'Parse error')
   }
+  const source = sourceOf(ctx.request)
+  for (const c of mcpCalls(msg)) record(ctx.env, { kind: 'mcp', ...c, source })
   const desk = () => readDesk(ctx)
   if (Array.isArray(msg)) {
     if (!msg.length || msg.length > 20) return rpcError(-32600, 'Invalid batch')

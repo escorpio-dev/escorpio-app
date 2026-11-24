@@ -92,8 +92,88 @@ export function summarize(days: Day[], readAt: number): Traffic {
   }
 }
 
+// Agent use: MCP and API calls Escorpio counts itself (server/usage.ts) in Workers Analytics Engine, read back with
+// its SQL API. Only calls from outside the site; the site's own reads are tagged "site" and left out. Analytics
+// Engine keeps 90 days and samples only at volumes far above Escorpio's, so SUM(_sample_interval) is the exact count.
+export const ACCOUNT_ID = '7a4c344a228f90412b1b09e956bc8662' // not a secret
+const USAGE_SQL = `SELECT blob1 AS kind, blob2 AS name, blob3 AS client, formatDateTime(timestamp, '%Y-%m-%d') AS day,
+  SUM(_sample_interval) AS calls FROM escorpio_usage WHERE blob4 = 'outside' AND timestamp > NOW() - INTERVAL '90' DAY
+  GROUP BY kind, name, client, day ORDER BY day FORMAT JSON`
+
+export type UsageRow = { kind: string; name: string; client: string; day: string; calls: number }
+export type Usage = {
+  since: string | null
+  days: { date: string; mcp: number; api: number }[]
+  totals: { toolCalls: number; mcpRequests: number; connections: number; api: number }
+  tools: { name: string; calls: number }[]
+  clients: { name: string; connections: number }[]
+  paths: { path: string; calls: number }[]
+}
+
+export async function fetchUsage(token: string, signal?: AbortSignal, f: typeof fetch = fetch): Promise<UsageRow[]> {
+  const res = await f(`https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/analytics_engine/sql`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${token}` },
+    body: USAGE_SQL,
+    signal,
+  })
+  const text = await res.text()
+  if (!res.ok) throw new Error(`Analytics Engine answered ${res.status}${text.includes('uthentication') ? ' (token lacks Account Analytics Read)' : ''}`)
+  const j = JSON.parse(text) as { data?: Record<string, unknown>[] }
+  if (!Array.isArray(j.data)) throw new Error('Analytics Engine sent no rows')
+  return j.data.map((r) => ({
+    kind: String(r.kind ?? ''),
+    name: String(r.name ?? ''),
+    client: String(r.client ?? ''),
+    day: String(r.day ?? ''),
+    calls: count(r.calls),
+  }))
+}
+
+const top = (m: Map<string, number>, n = 6) =>
+  [...m.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, n)
+
+export function summarizeUsage(rows: UsageRow[]): Usage {
+  const byDay = new Map<string, { mcp: number; api: number }>()
+  const tools = new Map<string, number>()
+  const clients = new Map<string, number>()
+  const paths = new Map<string, number>()
+  const totals = { toolCalls: 0, mcpRequests: 0, connections: 0, api: 0 }
+  for (const r of rows) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(r.day)) continue
+    const d = byDay.get(r.day) ?? { mcp: 0, api: 0 }
+    if (r.kind === 'mcp') {
+      d.mcp += r.calls
+      totals.mcpRequests += r.calls
+      if (r.name.startsWith('tool:')) {
+        totals.toolCalls += r.calls
+        tools.set(r.name.slice(5), (tools.get(r.name.slice(5)) ?? 0) + r.calls)
+      }
+      if (r.name === 'initialize') {
+        totals.connections += r.calls
+        const c = r.client || 'unnamed'
+        clients.set(c, (clients.get(c) ?? 0) + r.calls)
+      }
+    } else if (r.kind === 'api') {
+      d.api += r.calls
+      totals.api += r.calls
+      paths.set(r.name, (paths.get(r.name) ?? 0) + r.calls)
+    } else continue
+    byDay.set(r.day, d)
+  }
+  const days = [...byDay.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([date, v]) => ({ date, ...v }))
+  return {
+    since: days[0]?.date ?? null,
+    days,
+    totals,
+    tools: top(tools).map(([name, calls]) => ({ name, calls })),
+    clients: top(clients).map(([name, connections]) => ({ name, connections })),
+    paths: top(paths).map(([path, calls]) => ({ path, calls })),
+  }
+}
+
 type Ctx = { waitUntil(p: Promise<unknown>): void }
-const CACHE_KEY = 'https://escorpio.pro/__cache/traffic-v1'
+const CACHE_KEY = 'https://escorpio.pro/__cache/traffic-v2'
 const edgeCache = () => (globalThis as unknown as { caches?: { default?: Cache } }).caches?.default
 let memory: { body: string; at: number } | undefined
 
@@ -107,7 +187,15 @@ export async function readTraffic(ctx: Ctx, token: string): Promise<string> {
     const at = Number(hit.headers.get('x-read-at'))
     if (now - at < STATS_FRESH_MS) return (memory = { body: await hit.text(), at }).body
   }
-  const body = JSON.stringify(summarize(await fetchTraffic(token, AbortSignal.timeout(10_000)), now), null, 2) + '\n'
+  // Traffic must answer; agent use is extra and may be off (the token needs Account Analytics Read for it).
+  const [days, usage] = await Promise.all([
+    fetchTraffic(token, AbortSignal.timeout(10_000)),
+    fetchUsage(token, AbortSignal.timeout(10_000)).then(
+      (rows) => summarizeUsage(rows),
+      (e: unknown) => ({ error: e instanceof Error ? e.message : String(e) }),
+    ),
+  ])
+  const body = JSON.stringify({ ...summarize(days, now), usage }, null, 2) + '\n'
   memory = { body, at: now }
   if (cache)
     ctx.waitUntil(

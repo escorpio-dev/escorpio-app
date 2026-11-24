@@ -48,3 +48,46 @@ if (token) {
   assert.ok(live.totals.pageViews > 0)
   console.log(`stats live: ok (${live.days.length} days, ${live.totals.pageViews} page views, today ${live.today?.visitors ?? 0} visitors)`)
 } else console.log('stats live: skipped (no CF_ANALYTICS_TOKEN)')
+
+// Agent use: what /mcp and /api record (server/usage.ts) and how /api/stats sums it (server/stats.ts).
+const { mcpCalls, record, sourceOf } = await import('../server/usage.ts')
+const { fetchUsage, summarizeUsage } = await import('../server/stats.ts')
+assert.deepEqual(mcpCalls({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { clientInfo: { name: 'claude-ai' } } }), [{ name: 'initialize', client: 'claude-ai' }])
+assert.deepEqual(mcpCalls({ method: 'tools/call', params: { name: 'get_best_rates' } }), [{ name: 'tool:get_best_rates' }])
+assert.deepEqual(mcpCalls([{ method: 'tools/list' }, { method: 'notifications/initialized' }, 'junk', { id: 3 }]), [{ name: 'tools/list' }, { name: 'notifications/initialized' }])
+assert.deepEqual(mcpCalls({ method: 'initialize', params: {} }), [{ name: 'initialize', client: 'unnamed' }])
+assert.equal(mcpCalls({ method: 'tools/call', params: { name: '<script>x' } })[0].name, 'tool:scriptx', 'odd characters dropped')
+const points: { blobs?: string[]; indexes?: string[] }[] = []
+record({ USAGE: { writeDataPoint: (p) => points.push(p) } }, { kind: 'mcp', name: 'tool:list_vaults', source: 'outside' })
+assert.deepEqual(points[0].blobs, ['mcp', 'tool:list_vaults', '', 'outside'])
+assert.deepEqual(points[0].indexes, ['mcp'])
+record(undefined, { kind: 'api', name: '/api/rates', source: 'site' }) // no binding: records nothing, never throws
+record({ USAGE: { writeDataPoint: () => { throw new Error('down') } } }, { kind: 'api', name: '/api/rates', source: 'site' })
+assert.equal(sourceOf(new Request('https://escorpio.pro/api/desk', { headers: { 'sec-fetch-site': 'same-origin' } })), 'site')
+assert.equal(sourceOf(new Request('https://escorpio.pro/api/desk')), 'outside')
+
+const u = summarizeUsage([
+  { kind: 'mcp', name: 'initialize', client: 'claude-ai', day: '2026-11-25', calls: 3 },
+  { kind: 'mcp', name: 'initialize', client: 'cursor', day: '2026-11-25', calls: 1 },
+  { kind: 'mcp', name: 'tools/list', client: '', day: '2026-11-25', calls: 4 },
+  { kind: 'mcp', name: 'tool:get_best_rates', client: '', day: '2026-11-25', calls: 5 },
+  { kind: 'mcp', name: 'tool:list_markets', client: '', day: '2026-11-26', calls: 2 },
+  { kind: 'api', name: '/api/rates', client: '', day: '2026-11-26', calls: 7 },
+  { kind: 'other', name: 'x', client: '', day: '2026-11-26', calls: 99 },
+  { kind: 'mcp', name: 'tool:x', client: '', day: 'bad', calls: 99 },
+])
+assert.equal(u.since, '2026-11-25')
+assert.deepEqual(u.totals, { toolCalls: 7, mcpRequests: 15, connections: 4, api: 7 })
+assert.deepEqual(u.days, [{ date: '2026-11-25', mcp: 13, api: 0 }, { date: '2026-11-26', mcp: 2, api: 7 }])
+assert.deepEqual(u.tools[0], { name: 'get_best_rates', calls: 5 })
+assert.deepEqual(u.clients, [{ name: 'claude-ai', connections: 3 }, { name: 'cursor', connections: 1 }])
+assert.equal(summarizeUsage([]).since, null)
+const fakeText = (status: number, body: string) => (async () => new Response(body, { status })) as unknown as typeof fetch
+assert.deepEqual(await fetchUsage('t', undefined, fakeText(200, JSON.stringify({ data: [{ kind: 'mcp', name: 'initialize', client: 'c', day: '2026-11-25', calls: '2' }] }))), [{ kind: 'mcp', name: 'initialize', client: 'c', day: '2026-11-25', calls: 2 }])
+await assert.rejects(fetchUsage('t', undefined, fakeText(401, 'Authentication error')), /Account Analytics Read/)
+await assert.rejects(fetchUsage('t', undefined, fakeText(200, '{}')), /no rows/)
+console.log('usage logic: ok')
+if (token) {
+  const rows = await fetchUsage(token)
+  console.log(`usage live: ok (${rows.length} rows)`)
+} else console.log('usage live: skipped (no CF_ANALYTICS_TOKEN)')

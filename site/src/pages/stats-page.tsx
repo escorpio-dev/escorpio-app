@@ -20,6 +20,16 @@ type Traffic = {
   today: Day | null
   yesterday: Day | null
   busiest: Day | null
+  usage?: Usage | { error: string }
+}
+// MCP and API calls from outside the site, counted by Escorpio itself (server/usage.ts, server/stats.ts).
+type Usage = {
+  since: string | null
+  days: { date: string; mcp: number; api: number }[]
+  totals: { toolCalls: number; mcpRequests: number; connections: number; api: number }
+  tools: { name: string; calls: number }[]
+  clients: { name: string; connections: number }[]
+  paths: { path: string; calls: number }[]
 }
 type State = { kind: 'loading' } | { kind: 'off' } | { kind: 'error' } | { kind: 'ok'; t: Traffic }
 
@@ -94,6 +104,7 @@ export function StatsPage() {
         Morpho this minute, the traffic from Cloudflare's edge. The site has no cookies and no tracking script.
       </PageHead>
       <DeskNow />
+      <AgentUse state={state} />
       <h2 className="k-stats-h">Site traffic since 22 November</h2>
       <div className="mt-6">
         {state.kind === 'ok' ? (
@@ -142,6 +153,67 @@ function DeskNow() {
         <p className="k-stats-empty mt-6">Reading every USDG market and vault on Robinhood Chain…</p>
       )}
     </section>
+  )
+}
+
+// AI agents using the desk: MCP tool calls and connections by app, and API calls, all from outside the site.
+function AgentUse({ state }: { state: State }) {
+  const u = state.kind === 'ok' ? state.t.usage : undefined
+  const ready = u && !('error' in u)
+  return (
+    <section className="mt-16" aria-labelledby="agent-use">
+      <h2 id="agent-use" className="k-stats-h">
+        Used by AI agents{ready && u.since ? ` since ${day(u.since)}` : ''}
+      </h2>
+      {!ready ? (
+        <p className="k-stats-empty mt-6">
+          {state.kind === 'loading' ? 'Reading the counts…' : 'Agent call counts are not connected yet.'}
+        </p>
+      ) : !u.since ? (
+        <p className="k-stats-empty mt-6">Counting is on. No MCP or API call from outside the site yet.</p>
+      ) : (
+        <>
+          <div className="k-stats-tiles mt-6">
+            <Tile label="MCP tool calls" value={u.totals.toolCalls} note="agents asking the desk a question" live />
+            <Tile label="MCP connections" value={u.totals.connections} note="an agent app starting a session" />
+            <Tile label="Agent apps" value={u.clients.length} note="different apps by the name they send" />
+            <Tile label="API calls" value={u.totals.api} note="GET /api from outside this site" />
+          </div>
+          <div className="k-stats-lists">
+            <StatList title="Apps that connected" rows={u.clients.map((c) => [c.name, c.connections])} empty="none yet" />
+            <StatList title="Tools agents call" rows={u.tools.map((t) => [t.name, t.calls])} empty="none yet" />
+            <StatList title="API endpoints" rows={u.paths.map((p) => [p.path, p.calls])} empty="none yet" />
+          </div>
+          <p className="k-stats-read">
+            Counted by Escorpio on every call, without IPs or request contents; the site's own reads are left out. Apps are
+            named by what they send in the MCP handshake.{' '}
+            <a href="/docs" className="accent-link">
+              Connect your agent
+            </a>
+          </p>
+        </>
+      )}
+    </section>
+  )
+}
+
+function StatList({ title, rows, empty }: { title: string; rows: [string, number][]; empty: string }) {
+  return (
+    <div className="k-stats-list">
+      <h3>{title}</h3>
+      {rows.length ? (
+        <ol>
+          {rows.map(([name, n]) => (
+            <li key={name}>
+              <code>{name}</code>
+              <span>{n.toLocaleString('en-US')}</span>
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <p>{empty}</p>
+      )}
+    </div>
   )
 }
 
