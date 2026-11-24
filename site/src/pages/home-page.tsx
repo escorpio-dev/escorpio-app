@@ -3,6 +3,10 @@ import { Link } from 'react-router'
 import { ArrowSvg } from '@/components/arrow-svg'
 import { DeskReadout } from '@/components/desk-readout'
 import { RateRow, type RateItem } from '@/components/rate-row'
+import { TelegramIcon } from '@/components/telegram-icon'
+import { HeroCa, PerksTable, holderMinText } from '@/components/token-bits'
+import { ALERTS_BOT } from '@/data/alerts-link'
+import { TOKEN_LIVE } from '@/data/token'
 import { cheapest, collaterals, headlineVaults, vaultNotes, yearly } from '@/data/desk'
 import { ago, pct, usd, usdg } from '@/lib/format'
 import { useDesk, useNow } from '@/lib/use-desk'
@@ -18,6 +22,7 @@ export function HomePage() {
       <PhotoGrid />
       <Reserve />
       <Agents />
+      {TOKEN_LIVE && <Token />}
       <How />
     </main>
   )
@@ -78,8 +83,42 @@ function Top() {
             )}
           </p>
         </form>
+        <HeroCa />
       </div>
     </div>
+  )
+}
+
+// $ESCORPIO, shown only once the token exists (data/token.ts). What holding changes, nothing that is not switched on.
+function Token() {
+  return (
+    <section className="home-agents home-token" aria-labelledby="token-title">
+      <div className="width">
+        <div className="fancy-divider">
+          <div className="circle" />
+          <div className="circle" />
+        </div>
+        <h2 id="token-title">
+          Hold $ESCORPIO,
+          <br />
+          get more desk
+        </h2>
+        <p className="home-agents-lede">
+          The desk stays free for everyone. Holding at least {holderMinText()} unlocks more of it: more rate alerts, checked
+          every minute, a daily digest, and new features first. It is not a share of anything and pays nothing.
+        </p>
+        <PerksTable />
+        <div className="home-agents-cta">
+          <a href={`https://t.me/${ALERTS_BOT}`} className="button" target="_blank" rel="noopener noreferrer">
+            <ArrowSvg />
+            Start on Telegram
+          </a>
+          <Link to="/token" className="k-link">
+            Contract address and how to link a wallet
+          </Link>
+        </div>
+      </div>
+    </section>
   )
 }
 
@@ -124,10 +163,16 @@ function What() {
             Then it says what the rate hides. A vault closed to deposits, a market almost fully borrowed, a collateral Morpho does
             not recognise. A high rate pays for a risk, and you should see which one.
           </p>
-          <Link to="/method" className="button">
-            <ArrowSvg />
-            Read the method
-          </Link>
+          <div className="home-what-actions">
+            <Link to="/method" className="button">
+              <ArrowSvg />
+              Read the method
+            </Link>
+            <a href={`https://t.me/${ALERTS_BOT}`} className="k-link k-telegram" target="_blank" rel="noopener noreferrer">
+              <TelegramIcon />
+              Rate alerts on Telegram
+            </a>
+          </div>
         </div>
       </div>
     </div>
@@ -263,7 +308,7 @@ function Features() {
               </header>
               <p>{f.d}</p>
               <footer>
-                <span>Not live yet</span>
+                <span>Not live yet{TOKEN_LIVE && ' · holders first'}</span>
               </footer>
             </article>
           ))}
