@@ -41,11 +41,6 @@ const day = (iso: string) =>
     month: 'short',
     timeZone: 'UTC',
   })
-const clock = (iso: string) =>
-  new Date(iso).toLocaleTimeString('en-GB', {
-    hour: '2-digit',
-    minute: '2-digit',
-  })
 const reduced = () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
 function useTraffic(): State {
@@ -269,20 +264,6 @@ function Traffic({ t }: { t: Traffic }) {
           </table>
         </div>
       </details>
-      <div className="k-stats-notes">
-        <p>
-          <span className="live-dot" aria-hidden /> Read {clock(t.readAt)}, from Cloudflare's zone analytics. Read again every 10 minutes.{' '}
-          {n(t.totals.requests)} requests in all since {day(t.since)}, pictures, scripts and API calls included.
-        </p>
-        <p>
-          Visitors are unique IP addresses per day, so the same person on two days counts twice and people behind one network count once;
-          they are not added up across days. The same numbers as JSON:{' '}
-          <a href="/api/stats" className="accent-link">
-            /api/stats
-          </a>
-          .
-        </p>
-      </div>
     </>
   )
 }

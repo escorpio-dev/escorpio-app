@@ -422,8 +422,6 @@ section > .k-stats-h:first-child { margin-top: 0; }
   .k-stats-table th, .k-stats-table td { padding: 10px 10px; }
 }
 .k-stats-table thead th { color: var(--color-muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
-.k-stats-notes { margin-top: 28px; max-width: 760px; display: grid; gap: 12px; font-size: 14px; line-height: 1.65; color: #9f9f9f; }
-.k-stats-notes .live-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--k); margin-right: 6px; vertical-align: middle; }
 .k-stats-label .live-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--k); }
 
 /* $ESCORPIO (components/token-bits.tsx): hidden until data/token.ts has the address. */
