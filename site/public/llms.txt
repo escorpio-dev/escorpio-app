@@ -34,7 +34,7 @@ rate, no advice. Source: https://github.com/escorpio-dev/escorpio-app/tree/main/
 
 ## Public API
 
-OpenAPI description: [openapi.json](https://escorpio.pro/openapi.json)
+OpenAPI description: [openapi.json](https://escorpio.pro/openapi.json). Setup for Claude, ChatGPT, Cursor, Hermes Agent and the skills CLI: [docs](https://escorpio.pro/docs)
 
 
 No key, no login. JSON, open to any origin. Each reading is at most one minute old and says when it was read

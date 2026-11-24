@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react'
 import { PageHead } from '@/components/page-head'
+import { headlineVaults } from '@/data/desk'
+import { ago, pct, usd } from '@/lib/format'
+import { useDesk, useNow } from '@/lib/use-desk'
 
 // /stats: escorpio.pro traffic as Cloudflare counts it (functions/api/stats.ts, server/stats.ts). Only counted
 // numbers, passed through unchanged; bots are included and the page says so. Read again every 10 minutes.
@@ -87,10 +90,12 @@ export function StatsPage() {
   return (
     <main className="wrap pb-28 pt-[130px] lg:pt-[180px]">
       <PageHead kicker="Stats" title="Who reads the desk">
-        Traffic on escorpio.pro since it went live on 22 November, as Cloudflare counts it at the edge. The site has no cookies and no
-        tracking script. Bots and crawlers are counted too, and every number below says what it counts.
+        What the desk reads right now, and how many people read it. Every number is counted, not estimated: the desk from
+        Morpho this minute, the traffic from Cloudflare's edge. The site has no cookies and no tracking script.
       </PageHead>
-      <div className="mt-14">
+      <DeskNow />
+      <h2 className="k-stats-h">Site traffic since 22 November</h2>
+      <div className="mt-6">
         {state.kind === 'ok' ? (
           <Traffic t={state.t} />
         ) : (
@@ -104,6 +109,49 @@ export function StatsPage() {
         )}
       </div>
     </main>
+  )
+}
+
+// The desk this minute, the same reading and sums the home page uses (useDesk, headlineVaults).
+function DeskNow() {
+  const { desk } = useDesk()
+  const now = useNow()
+  const total = desk ? desk.vaults.reduce((s, v) => s + v.totalUsd, 0) : 0
+  const best = desk ? headlineVaults(desk)[0] : undefined
+  return (
+    <section className="mt-14" aria-labelledby="desk-now">
+      <h2 id="desk-now" className="k-stats-h">
+        The desk right now
+      </h2>
+      {desk ? (
+        <>
+          <div className="k-stats-tiles mt-6">
+            <Tile label="USDG loan markets read" value={desk.markets.length} note="every Morpho market lending USDG" live />
+            <Tile label="USDG vaults read" value={desk.vaults.length} note="every Morpho vault holding USDG" />
+            <TextTile label="USDG in those vaults" value={usd(total)} note="sum of every vault's size" />
+            <TextTile label="Best open vault" value={best ? pct(best.netApy) : 'none open'} note={best ? `${best.name}, ${usd(best.totalUsd)} inside` : 'no open vault right now'} />
+          </div>
+          <p className="k-stats-read">
+            <span className="live-dot" aria-hidden /> Read {ago(desk.readAt, now)} from the Morpho API, again every minute.{' '}
+            <a href="/earn" className="accent-link">
+              Compare every vault
+            </a>
+          </p>
+        </>
+      ) : (
+        <p className="k-stats-empty mt-6">Reading every USDG market and vault on Robinhood Chain…</p>
+      )}
+    </section>
+  )
+}
+
+function TextTile({ label, value, note }: { label: string; value: string; note: string }) {
+  return (
+    <div className="k-stats-tile">
+      <span className="k-stats-label">{label}</span>
+      <strong>{value}</strong>
+      <span className="k-stats-note">{note}</span>
+    </div>
   )
 }
 

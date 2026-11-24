@@ -38,7 +38,7 @@ export function projectFacts(ca: string): string {
   return [
     '<noscript>',
     '<p>Escorpio: live USDG vault and loan rates on Robinhood Chain, read from Morpho, with the risks in plain words. Non-custodial: you sign from your own wallet.</p>',
-    `<p>Code: <a href="${REPO}">${REPO}</a>. API: <a href="${SITE}/api">${SITE}/api</a>, <a href="${SITE}/openapi.json">OpenAPI</a> and <a href="${SITE}/llms.txt">llms.txt</a>. MCP server: ${SITE}/mcp. Agent skill: npx skills add escorpio-dev/escorpio-app.</p>`,
+    `<p>Code: <a href="${REPO}">${REPO}</a>. API: <a href="${SITE}/api">${SITE}/api</a>, <a href="${SITE}/openapi.json">OpenAPI</a> and <a href="${SITE}/llms.txt">llms.txt</a>. MCP server: ${SITE}/mcp. Agent skill: npx skills add escorpio-dev/escorpio-app. Setup docs: <a href="${SITE}/docs">${SITE}/docs</a>.</p>`,
     `<p>X: <a href="https://x.com/escorpiohq">@escorpiohq</a>. Site traffic: <a href="${SITE}/stats">${SITE}/stats</a>.</p>`,
     token,
     '</noscript>',

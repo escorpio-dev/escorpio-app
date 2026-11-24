@@ -1,4 +1,5 @@
-import { useState, type FormEvent } from 'react'
+import { useState, type FormEvent, type ReactElement } from 'react'
+import { ClaudeMark, CursorMark, HermesMark, OpenAIMark, SkillsShMark } from '@/components/agent-marks'
 import { Link } from 'react-router'
 import { ArrowSvg } from '@/components/arrow-svg'
 import { DeskReadout } from '@/components/desk-readout'
@@ -329,6 +330,39 @@ const AGENT_TOOLS = [
   ['explain_risk_notes', 'what each warning means'],
 ]
 
+// Agents and directories Escorpio plugs into, with their official marks (components/agent-marks.tsx).
+// MCP clients take https://escorpio.pro/mcp; skills.sh and Hermes also install the skill (skills/escorpio).
+const WORKS_WITH: [string, string, string, (p: { size?: number }) => ReactElement][] = [
+  ['Claude', 'MCP', 'claude', ClaudeMark],
+  ['ChatGPT', 'MCP', 'chatgpt', OpenAIMark],
+  ['Cursor', 'MCP or skill', 'cursor', CursorMark],
+  ['Hermes Agent', 'MCP or skill', 'hermes', HermesMark],
+  ['skills.sh', 'Agent skill', 'skills', SkillsShMark],
+]
+
+function WorksWith() {
+  return (
+    <div className="k-works">
+      <span className="k-works-label">
+        Works with · <Link to="/docs">setup docs</Link>
+      </span>
+      <ul>
+        {WORKS_WITH.map(([name, how, id, Mark]) => (
+          <li key={name}>
+            <Link to={`/docs#${id}`} aria-label={`Set up Escorpio in ${name}`}>
+              <Mark size={22} />
+              <span>
+                <b>{name}</b>
+                <small>{how}</small>
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 function Agents() {
   const { desk } = useDesk()
   const now = useNow()
@@ -361,6 +395,7 @@ function Agents() {
           Everything Escorpio reads is open to people and to AI agents. Ask on the page or ask your agent: the rates are the
           same, read the same minute. Whoever asks, the money only moves when you sign.
         </p>
+        <WorksWith />
         <div className="home-agents-cols">
           <article className="home-agents-col">
             <span className="who">01 · You</span>
@@ -406,7 +441,7 @@ function Agents() {
             </div>
             <p className="home-agents-small">
               Agents read, they do not sign. Your agent finds the rate and the market; the deposit or loan still happens here,
-              in your wallet. Also as an <a href="/openapi.json">OpenAPI file</a> and <a href="/llms.txt">llms.txt</a>.
+              in your wallet. Setup for each agent in the <Link to="/docs">docs</Link>, also as an <a href="/openapi.json">OpenAPI file</a> and <a href="/llms.txt">llms.txt</a>.
             </p>
           </article>
         </div>
