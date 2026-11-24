@@ -384,7 +384,7 @@ function Agents() {
             <span className="who">02 · Your agent</span>
             <h3>Plug in Escorpio</h3>
             <p>
-              Add Escorpio as an MCP server in Claude, ChatGPT, Cursor or any agent that speaks MCP. No key, no sign-up.
+              Add Escorpio as an MCP server in Claude, ChatGPT, Cursor, Hermes or any agent that speaks MCP. No key, no sign-up.
             </p>
             <div className="k-endpoint">
               <code>{MCP_URL}</code>
@@ -399,6 +399,11 @@ function Agents() {
                 </li>
               ))}
             </ul>
+            <div className="home-agents-skill">
+              <span>Or as a skill</span>
+              <code>npx skills add escorpio-dev/escorpio-app</code>
+              <code>hermes skills install escorpio-dev/escorpio-app/skills/escorpio</code>
+            </div>
             <p className="home-agents-small">
               Agents read, they do not sign. Your agent finds the rate and the market; the deposit or loan still happens here,
               in your wallet. Also as an <a href="/openapi.json">OpenAPI file</a> and <a href="/llms.txt">llms.txt</a>.

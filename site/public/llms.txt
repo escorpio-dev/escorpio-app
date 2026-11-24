@@ -16,6 +16,22 @@ Add `https://escorpio.pro/mcp` as a remote MCP server (Streamable HTTP, no key, 
 Quote `readAt` with any rate. Never call a rate safe or guaranteed. To act, send people to the Earn or Borrow page,
 where they sign with their own wallet.
 
+Hermes Agent: add it under `mcp_servers` in `~/.hermes/config.yaml`, then `/reload-mcp`:
+
+```yaml
+mcp_servers:
+  escorpio:
+    url: "https://escorpio.pro/mcp"
+```
+
+## Agent skill
+
+The same desk as an Agent Skill (SKILL.md), with the rules for answering: size, risk notes and read time with every
+rate, no advice. Source: https://github.com/escorpio-dev/escorpio-app/tree/main/skills/escorpio
+
+- Claude Code, Cursor, Codex and other agents: `npx skills add escorpio-dev/escorpio-app` (listed on skills.sh)
+- Hermes Agent: `hermes skills install escorpio-dev/escorpio-app/skills/escorpio`
+
 ## Public API
 
 OpenAPI description: [openapi.json](https://escorpio.pro/openapi.json)

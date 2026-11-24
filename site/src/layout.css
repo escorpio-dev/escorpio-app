@@ -438,6 +438,9 @@
 .k-endpoint code { flex: 1; min-width: 0; padding: 0 16px; line-height: 52px; font-family: var(--k-mono); font-size: 15px; color: #fff; overflow-x: auto; white-space: nowrap; }
 .k-endpoint .button { padding: 3px 22px 0; flex-shrink: 0; }
 .home-agents-tools code { font-family: var(--k-mono); color: #fff; margin-right: 6px; }
+.home-agents-skill { display: grid; gap: 6px; min-width: 0; }
+.home-agents-skill span { font-family: var(--k-mono); font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-muted); }
+.home-agents-skill code { display: block; font-family: var(--k-mono); font-size: 14px; color: #fff; padding: 10px 14px; border: 1px solid #444; overflow-x: auto; white-space: nowrap; }
 .home-wrap .home-agents-col .home-agents-small { font-size: 14px; color: #9f9f9f; }
 .home-agents-chat { margin-top: 56px; max-width: 820px; display: grid; gap: 12px; }
 .home-agents-chat figcaption { font-family: var(--k-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-muted); margin-bottom: 8px; }
