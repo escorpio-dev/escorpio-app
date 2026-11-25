@@ -68,7 +68,7 @@
 /* Phones: start the title low enough that it sits on the faded bottom of the video, not on the scorpion. */
 @media (max-width: 639px) { .home-top { padding-top: 170px; } }
 @media (min-width: 640px) { .home-top { min-height: 500px; } }
-@media (min-width: 820px) { .home-top { min-height: 770px; text-align: center; } }
+@media (min-width: 820px) { .home-top { min-height: 770px; } }
 /* Dark toward the bottom, so the lede and the amount result read over the bright coins. */
 .home-top:after { content: ''; position: absolute; width: 100%; height: 100%; bottom: 0; left: 0; background: linear-gradient(transparent 20%, rgba(0,0,0,0.45) 55%, #000 92%); }
 .home-top .width { position: relative; z-index: 100; }
@@ -80,13 +80,29 @@
 .home-top-video video, .home-top-video img { width: 100%; display: block; }
 /* Desktop: the hero fills the whole first screen, the video covers it edge to edge (cropped, never letterboxed),
    and only the last strip fades to black. */
+/* Desktop: like the @escorpiohq X banner. The video fills the right two thirds and fades into black on the left, where
+   the copy sits on clean black. */
 @media (min-width: 820px) {
-  .home-top { min-height: 100vh; min-height: 100svh; padding-bottom: 40px; }
-  .home-top:after { background: linear-gradient(transparent 45%, rgba(0,0,0,0.4) 75%, #000 100%); }
-  .home-top-video { height: 100%; }
+  .home-top { min-height: 100vh; min-height: 100svh; padding: 140px 0 70px; align-items: center; }
+  .home-top:after { background: linear-gradient(90deg, #000 0%, #000 38%, rgba(0,0,0,0.6) 50%, transparent 64%), linear-gradient(transparent 75%, #000 100%); }
+  .home-top-video { left: auto; right: 0; width: 62%; height: 100%; }
   .home-top-video:after { display: none; }
-  .home-top-video video, .home-top-video img { height: 100%; object-fit: cover; object-position: center top; }
+  .home-top-video video, .home-top-video img { height: 100%; object-fit: cover; object-position: 40% center; }
+  .home-top-copy { max-width: 560px; }
+  .home-wrap .home-top h1 { font-size: 58px; line-height: 1.02; font-stretch: 72%; }
 }
+@media (min-width: 1200px) { .home-top-copy { max-width: 620px; } .home-wrap .home-top h1 { font-size: 66px; } }
+/* Hero title: condensed like the page titles, sized so "for Robinhood Chain" stays on one line. */
+@media (max-width: 819px) { .home-wrap .home-top h1 { font-stretch: 72%; font-size: 9.4vw; line-height: 1.02; } .k-kicker { text-shadow: 0 0 10px #000, 0 0 3px #000, 0 0 1px #000; } }
+.k-kicker { font-family: var(--k-mono); font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--k); margin-bottom: 18px; }
+@media (min-width: 820px) { .home-wrap .k-kicker { font-size: 15px; margin-bottom: 22px; } }
+.k-hero-cta { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 16px; margin-top: 30px; }
+@media (min-width: 820px) { .k-hero-cta { margin-top: 38px; } }
+.home-top .k-hero-cta .button { margin-top: 0; }
+.k-button-ghost { display: inline-flex; align-items: center; padding: 3px 26px 0; line-height: 52px; border: 1px solid var(--k); color: var(--k); font-family: var(--k-sans); font-weight: 700; font-size: 16px; text-transform: uppercase; transition: 0.2s background-color, 0.2s color; }
+.home-wrap .k-button-ghost:hover { background: var(--k); color: #101010; text-decoration: none; }
+.home-wrap .home-top .k-trust { margin-top: 22px; font-family: var(--k-mono); font-size: 13px; line-height: 1.6; color: #9aa0ab; }
+@media (min-width: 820px) { .home-wrap .home-top .k-trust { font-size: 14px; } }
 
 .home-intro { margin: 80px 0; }
 @media (min-width: 1000px) { .home-intro { margin: 150px 0; } }
@@ -151,9 +167,9 @@
 .home-reserve-header { border-bottom: 1px solid #444; }
 .home-reserve-header h2 { margin-bottom: 30px; }
 .home-reserve-header p { max-width: 570px; }
-/* Amount box in the hero. */
-.k-amount { max-width: 512px; margin-top: 30px; }
-@media (min-width: 820px) { .k-amount { margin: 40px auto 0; } }
+/* Amount box under "Compare rates" (was in the hero). */
+.k-amount { max-width: 640px; margin: 36px 0 34px; }
+.k-amount-label { display: block; font-family: var(--k-mono); font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-muted); margin-bottom: 12px; }
 .k-amount .relative { display: flex; flex-direction: column; position: relative; }
 @media (min-width: 820px) { .k-amount .relative { flex-direction: row; } }
 .k-amount input, .footer input {
@@ -163,15 +179,15 @@
 .k-amount input:focus-visible, .footer input:focus-visible { box-shadow: 0 0 0 2px #fff; }
 .k-amount input::placeholder, .footer input::placeholder { color: #bcc2cf; }
 .k-amount input { background: rgba(0,0,0,0.55); }
-.home-top .k-amount button { max-width: 280px; margin-top: 20px; }
-@media (min-width: 820px) { .home-top .k-amount button { margin-top: 0; } }
+.k-amount .button { max-width: 280px; margin-top: 14px; justify-content: flex-start; }
+@media (min-width: 820px) { .k-amount .button { margin-top: 0; } }
 /* Two lines reserved so typing does not push the page around. */
-.home-wrap .k-amount .k-yield { font-size: 16px; margin-top: 14px; color: #fff; min-height: 3.2em; text-shadow: 0 1px 12px #000, 0 0 3px #000; }
+.home-wrap .k-amount .k-yield { font-size: 16px; margin-top: 14px; color: #fff; min-height: 3.2em; }
 .k-amount .k-yield strong { color: var(--k); font-weight: 700; }
-/* Hero lede: white and shadowed so it reads over the video. */
+/* Hero lede: on clean black on desktop; shadowed on phones, where it can sit on the fading video. */
 .home-wrap .home-top .k-lede { max-width: 560px; margin-top: 20px; font-size: 18px; line-height: 1.5; color: #fff;
-  text-shadow: 0 1px 14px #000, 0 0 4px #000, 0 0 2px #000; }
-@media (min-width: 820px) { .home-wrap .home-top .k-lede { margin: 26px auto 0; font-size: 20px; } }
+  text-shadow: 0 1px 14px #000, 0 0 4px #000; }
+@media (min-width: 820px) { .home-wrap .home-top .k-lede { margin: 24px 0 0; font-size: 20px; text-shadow: none; } }
 
 .home-reserve-product { padding: 60px 0; display: flex; flex-wrap: wrap; }
 .home-reserve-product + .home-reserve-product { border-top: 1px solid #444; margin-top: -1px; }
@@ -439,7 +455,6 @@ section > .k-stats-h:first-child { margin-top: 0; }
 /* $ESCORPIO (components/token-bits.tsx): hidden until data/token.ts has the address. */
 .k-ca { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; margin-top: 22px; font-family: var(--k-mono); font-size: 14px; }
 .home-wrap .k-ca { font-size: 14px; }
-@media (min-width: 820px) { .k-ca { justify-content: center; } }
 .k-ca button { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid #444; background: rgba(0,0,0,0.55); color: #bcc2cf; cursor: pointer; transition: 0.2s border-color; }
 .k-ca button:hover, .k-ca button:focus-visible { border-color: var(--k); }
 .k-ca-tick { color: var(--k); }
