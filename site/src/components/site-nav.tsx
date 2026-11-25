@@ -3,6 +3,8 @@ import { GITHUB_URL, GithubIcon, X_HANDLE, X_URL, XIcon } from '@/components/bra
 import { EscorpioWordmark } from '@/components/escorpio-wordmark'
 import { TOKEN_LIVE } from '@/data/token'
 
+const NAV_CLASS: Record<string, string> = { '/method': 'k-nav-method', '/stats': 'k-nav-stats', '/docs': 'k-nav-docs' }
+
 // Floating header (classes in layout.css): page links, then the X and GitHub marks.
 export function SiteNav() {
   return (
@@ -12,19 +14,20 @@ export function SiteNav() {
           <Link to="/" className="logo" aria-label="Escorpio home">
             <EscorpioWordmark />
           </Link>
-          {/* Under 600px the header keeps four links: Method drops first, then Stats once Token joins after launch. Both stay in the footer. */}
+          {/* Under 600px the header keeps four links: Earn, Borrow, Alerts, Docs. Method and Stats drop (they stay in the footer), and Docs too once Token joins after launch. */}
           <ul className={TOKEN_LIVE ? 'has-token' : undefined}>
             {(
               [
                 ['/earn', 'Earn'],
                 ['/borrow', 'Borrow'],
+                ['/alerts', 'Alerts'],
                 ['/method', 'Method'],
                 ['/stats', 'Stats'],
                 ['/docs', 'Docs'],
                 ...(TOKEN_LIVE ? [['/token', 'Token']] : []),
               ] as [string, string][]
             ).map(([to, name]) => (
-              <li key={to} className={to === '/method' ? 'k-nav-method' : to === '/stats' ? 'k-nav-stats' : undefined}>
+              <li key={to} className={NAV_CLASS[to]}>
                 <NavLink to={to}>{name}</NavLink>
               </li>
             ))}

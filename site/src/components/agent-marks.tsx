@@ -1,8 +1,8 @@
 // Official marks of the agents and directories Escorpio works with, one colour (currentColor) for a mono row.
 // Sources: Claude and OpenAI paths unchanged from Simple Icons 13.21.0; Cursor's cube from the first path of
 // cursor.com/brand brand-logo-1.svg (wordmark and background left out); skills.sh's circle and triangle redrawn from
-// its favicon at the same proportions; Hermes Agent's mono app icon from NousResearch/hermes-agent
-// (icon.icon/Assets/mono.png, public/logos/hermes-agent.png) used as a mask so it takes the text colour.
+// its favicon at the same proportions; Hermes Agent's own app icon, in its own colours (NousResearch/hermes-agent
+// apps/bootstrap-installer/src-tauri/icons/128x128.png, public/logos/hermes-agent.png), shown as an image with rounded corners.
 type P = { size?: number }
 
 export const ClaudeMark = ({ size = 22 }: P) => (
@@ -29,4 +29,6 @@ export const SkillsShMark = ({ size = 22 }: P) => (
   </svg>
 )
 
-export const HermesMark = ({ size = 22 }: P) => <span className="k-mask-mark" style={{ width: size, height: size }} aria-hidden />
+export const HermesMark = ({ size = 22 }: P) => (
+  <img className="k-app-icon" src="/logos/hermes-agent.png" width={size} height={size} alt="" aria-hidden />
+)
