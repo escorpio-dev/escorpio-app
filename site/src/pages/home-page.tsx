@@ -34,21 +34,23 @@ const stillOnly = () => typeof window !== 'undefined' && window.matchMedia('(pre
 
 // The hero holds the amount box. Typing shows a year
 // at today's best open vault rate right here; the button scrolls down to the rate rows (#compare) on this page.
-// The hero follows the @escorpiohq X banner: copy on the left over clean black, the video on the right (on phones the
-// video sits above the copy). It says first that Escorpio compares rates; earning or borrowing comes after, in the
+// The hero follows the @escorpiohq X banner: copy on the left, the video on the right fading into the black, with live desk
+// numbers under the buttons (on phones the video sits above the copy). It says first that Escorpio compares rates; earning or borrowing comes after, in the
 // visitor's own wallet. Not a staking pool: Escorpio never holds money.
 function Top() {
   const [still] = useState(stillOnly)
+  const { desk } = useDesk()
+  const total = desk ? desk.vaults.reduce((s, v) => s + v.totalUsd, 0) : 0
   return (
     <div className="home-top">
-      <div className="home-top-video">
+      <div className="home-top-media">
         {still ? (
           <img src="/media/hero.webp" alt="" aria-hidden width={1920} height={1080} />
         ) : (
           <video className="hero-video" poster="/media/hero.webp" src="/media/hero.mp4" muted loop autoPlay playsInline preload="auto" aria-hidden />
         )}
       </div>
-      <div className="width">
+      <div className="width home-top-inner">
         <div className="home-top-copy">
           <p className="k-kicker">Compare · then earn or borrow</p>
           <h1>
@@ -68,6 +70,20 @@ function Top() {
               Compare loan rates
             </Link>
           </div>
+          <dl className="home-top-stats" aria-live="polite">
+            <div>
+              <dt>Loan markets</dt>
+              <dd>{desk ? desk.markets.length : '…'}</dd>
+            </div>
+            <div>
+              <dt>Vaults</dt>
+              <dd>{desk ? desk.vaults.length : '…'}</dd>
+            </div>
+            <div>
+              <dt>USDG in vaults</dt>
+              <dd>{desk ? usd(total) : '…'}</dd>
+            </div>
+          </dl>
           <p className="k-trust">Live from Morpho · Escorpio never holds your money · Every risk flagged · Works with AI agents</p>
           <HeroCa />
         </div>
