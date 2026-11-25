@@ -34,59 +34,93 @@ const stillOnly = () => typeof window !== 'undefined' && window.matchMedia('(pre
 
 // The hero holds the amount box. Typing shows a year
 // at today's best open vault rate right here; the button scrolls down to the rate rows (#compare) on this page.
+// The hero follows the @escorpiohq X banner: copy on the left, the video on the right fading into the black, with live desk
+// numbers under the buttons (on phones the video sits above the copy). It says first that Escorpio compares rates; earning or borrowing comes after, in the
+// visitor's own wallet. Not a staking pool: Escorpio never holds money.
 function Top() {
   const [still] = useState(stillOnly)
   const { desk } = useDesk()
-  const [raw, setRaw] = useState('')
-  const amount = Math.max(0, Math.min(1e12, Number(raw.replace(/,/g, '')) || 0))
-  const best = desk ? headlineVaults(desk)[0] : undefined
-  const submit = (e: FormEvent) => {
-    e.preventDefault()
-    const target = document.getElementById('compare')
-    if (!target) return
-    target.scrollIntoView({ behavior: stillOnly() ? 'auto' : 'smooth' })
-    target.focus({ preventScroll: true })
-  }
+  const total = desk ? desk.vaults.reduce((s, v) => s + v.totalUsd, 0) : 0
   return (
     <div className="home-top">
-      <div className="home-top-video">
+      <div className="home-top-media">
         {still ? (
           <img src="/media/hero.webp" alt="" aria-hidden width={1920} height={1080} />
         ) : (
           <video className="hero-video" poster="/media/hero.webp" src="/media/hero.mp4" muted loop autoPlay playsInline preload="auto" aria-hidden />
         )}
       </div>
-      <div className="width">
-        <h1>
-          Idle USDG,
-          <br />
-          put to work
-        </h1>
-        <p className="k-lede">How much USDG is sitting still? Type it in to see a year at today's best open vault rate. A snapshot, not a promise.</p>
-        <form onSubmit={submit} className="k-amount">
-          <div className="relative">
-            <label htmlFor="idle" className="sr-only">
-              Idle USDG
-            </label>
-            <input id="idle" inputMode="decimal" value={raw} onChange={(e) => setRaw(e.target.value.replace(/[^\d.,]/g, ''))} placeholder="10,000 USDG" />
-            <button type="submit" className="button">
-              <ArrowSvg />
-              Put it to work
-            </button>
-          </div>
-          <p className="k-yield" aria-live="polite">
-            {best && amount > 0 ? (
-              <>
-                A year in {best.name} ({usd(best.totalUsd)} inside) at {pct(best.netApy)}: <strong>+{usdg(yearly(amount, best.netApy))} USDG</strong>, if the rate held.
-              </>
-            ) : (
-              ' '
-            )}
+      <div className="width home-top-inner">
+        <div className="home-top-copy">
+          <p className="k-kicker">Compare · then earn or borrow</p>
+          <h1>
+            The USDG desk
+            <br />
+            <span className="k-accent">for Robinhood Chain</span>
+          </h1>
+          <p className="k-lede">
+            Compare every vault and loan rate, see what each one hides, then earn or borrow right here from your own wallet.
           </p>
-        </form>
-        <HeroCa />
+          <div className="k-hero-cta">
+            <Link to="/earn" className="button">
+              <ArrowSvg />
+              Compare vault rates
+            </Link>
+            <Link to="/borrow" className="k-button-ghost">
+              Compare loan rates
+            </Link>
+          </div>
+          <dl className="home-top-stats" aria-live="polite">
+            <div>
+              <dt>Loan markets</dt>
+              <dd>{desk ? desk.markets.length : '…'}</dd>
+            </div>
+            <div>
+              <dt>Vaults</dt>
+              <dd>{desk ? desk.vaults.length : '…'}</dd>
+            </div>
+            <div>
+              <dt>USDG in vaults</dt>
+              <dd>{desk ? usd(total) : '…'}</dd>
+            </div>
+          </dl>
+          <p className="k-trust">Live from Morpho · Escorpio never holds your money · Every risk flagged · Works with AI agents</p>
+          <HeroCa />
+        </div>
       </div>
     </div>
+  )
+}
+
+// How much is sitting still: a year at today's best open vault rate, as a snapshot (moved from the hero to Compare rates).
+function IdleCalc() {
+  const { desk } = useDesk()
+  const [raw, setRaw] = useState('')
+  const amount = Math.max(0, Math.min(1e12, Number(raw.replace(/,/g, '')) || 0))
+  const best = desk ? headlineVaults(desk)[0] : undefined
+  const submit = (e: FormEvent) => e.preventDefault()
+  return (
+    <form onSubmit={submit} className="k-amount">
+      <label htmlFor="idle" className="k-amount-label">
+        How much USDG is sitting still?
+      </label>
+      <div className="relative">
+        <input id="idle" inputMode="decimal" value={raw} onChange={(e) => setRaw(e.target.value.replace(/[^\d.,]/g, ''))} placeholder="10,000 USDG" />
+        <Link to="/earn" className="button">
+          <ArrowSvg />
+          Put it to work
+        </Link>
+      </div>
+      <p className="k-yield" aria-live="polite">
+        {best && amount > 0 ? (
+          <>
+            A year in {best.name} ({usd(best.totalUsd)} inside) at {pct(best.netApy)}: <strong>+{usdg(yearly(amount, best.netApy))} USDG</strong>, if the rate held. A snapshot, not a promise.
+          </>
+        ) : (
+          ' '
+        )}
+      </p>
+    </form>
   )
 }
 
@@ -562,6 +596,7 @@ function Reserve() {
             The biggest USDG vaults next to the cheapest loan for each token you can borrow against, read live from Morpho.
             Struck-through entries are closed or stuck right now.
           </p>
+          <IdleCalc />
         </div>
         <RateRow n="01" title="Park" plates={4} items={park} cta={{ to: '/earn', label: 'Every vault' }} unit="net a year" />
         <RateRow n="02" title="Borrow" plates={6} items={borrow} cta={{ to: '/borrow', label: 'Every loan' }} unit="cheapest loan" />
