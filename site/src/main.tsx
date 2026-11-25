@@ -10,6 +10,7 @@ import { EarnPage } from '@/pages/earn-page'
 import { HomePage } from '@/pages/home-page'
 import { MethodPage } from '@/pages/method-page'
 import { LinkPage } from '@/pages/link-page'
+import { AlertsPage } from '@/pages/alerts-page'
 import { DocsPage } from '@/pages/docs-page'
 import { StatsPage } from '@/pages/stats-page'
 import { TokenPage } from '@/pages/token-page'
@@ -23,6 +24,7 @@ const TITLES: Record<string, string> = {
   '/link': 'Link your wallet · Escorpio alerts',
   '/stats': 'Stats · site traffic · Escorpio',
   '/docs': 'Docs · MCP server, agent skill and API · Escorpio',
+  '/alerts': 'Alerts · USDG rate alerts on Telegram · Escorpio',
   ...(TOKEN_LIVE ? { '/token': '$ESCORPIO · the Escorpio token' } : {}),
 }
 
@@ -64,6 +66,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/link" element={<LinkPage />} />
           <Route path="/stats" element={<StatsPage />} />
           <Route path="/docs" element={<DocsPage />} />
+          <Route path="/alerts" element={<AlertsPage />} />
           {TOKEN_LIVE && <Route path="/token" element={<TokenPage />} />}
           <Route path="*" element={<NotFound />} />
         </Routes>
