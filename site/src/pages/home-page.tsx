@@ -1,7 +1,9 @@
 import { useState, type FormEvent, type ReactElement } from 'react'
 import { ClaudeMark, CursorMark, HermesMark, OpenAIMark, SkillsShMark } from '@/components/agent-marks'
-import { Link } from 'react-router'
+import { Link, useSearchParams } from 'react-router'
 import { ArrowSvg } from '@/components/arrow-svg'
+import { PrototypeSwitcher } from '@/components/prototype-switcher'
+import { HERO_NAMES, HERO_VARIANTS, HeroPrototype } from '@/pages/home-hero.prototype'
 import { DeskReadout } from '@/components/desk-readout'
 import { RateRow, type RateItem } from '@/components/rate-row'
 import { TelegramIcon } from '@/components/telegram-icon'
@@ -15,9 +17,13 @@ import { useDesk, useNow } from '@/lib/use-desk'
 // Home page (styles in layout.css): hero with the amount box, what Escorpio does, pictures, the rate rows with live
 // Morpho numbers, the same desk for people and their AI agents, and how it works.
 export function HomePage() {
+  // PROTOTYPE: ?variant= swaps the hero (dev server only); remove with home-hero.prototype.tsx once a variant is picked.
+  const [params] = useSearchParams()
+  const variant = import.meta.env.DEV ? (params.get('variant') ?? 'current') : 'current'
   return (
     <main className="home-wrap">
-      <Top />
+      <HeroPrototype variant={variant} current={<Top />} />
+      {import.meta.env.DEV && <PrototypeSwitcher variants={HERO_VARIANTS} names={HERO_NAMES} />}
       <Intro />
       <What />
       <PhotoGrid />
