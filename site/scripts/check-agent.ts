@@ -3,16 +3,16 @@
 // with the same sentence the site shows, a real USDG holder's deposit simulates, loan limits hold, payment requests
 // and payment checks work. Plus the shared loan plan on a hand-made loan. Run: npm run check:agent
 import assert from 'node:assert/strict'
-import { parseAbiItem, parseUnits, type Address, type Hex } from 'viem'
+import { createPublicClient, custom, HttpRequestError, parseAbiItem, parseUnits, type Address, type Hex } from 'viem'
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts'
 import { vaultNotes, marketNotes } from '../src/data/desk.ts'
 import { USDG, fetchMorpho, parseDesk } from '../src/data/morpho.ts'
 import { readLoanLink, readReceiveLink, readVaultLink } from '../src/lib/action-link.ts'
-import { publicClient as pc } from '../src/lib/chain.ts'
+import { publicClient as pc, robinhood } from '../src/lib/chain.ts'
 import { LOAN_CAP, loanBlock, loanPlan, withMargin, type Loan } from '../src/lib/loan-tx.ts'
 import { newRef, toQuery, typedData } from '../src/lib/receive.ts'
 import { erc20Abi } from '../src/lib/vault-tx.ts'
-import { AGENT_TOOLS } from '../server/agent.ts'
+import { AGENT_TOOLS, callAgentTool } from '../server/agent.ts'
 import { handle } from '../server/mcp.ts'
 
 const live = parseDesk(await fetchMorpho(), Date.now())
@@ -136,6 +136,30 @@ const plain = (await data('check_payment', { tx_hash: tx.transactionHash }))
 assert.ok(plain.usdgTransfers.length > 0)
 assert.equal((await tool('check_payment', { tx_hash: `0x${'00'.repeat(32)}` })).structuredContent.found, false)
 assert.equal((await tool('check_payment', { tx_hash: tx.transactionHash, payment_link: 'not a link' })).isError, true)
+
+// 7. Escorpio's server cannot reach the RPC (Cloudflare egress is refused with "Too Many Requests"): every tool still
+// answers with its link, says it was not simulated there, and never reports a block or a missing payment it did not read.
+const down = createPublicClient({
+  chain: robinhood,
+  transport: custom({ request: async () => { throw new HttpRequestError({ url: 'https://rpc.test', status: 429, details: 'Too Many Requests' }) } }, { retryCount: 0 }),
+})
+for (const [name, args] of [
+  ['prepare_deposit', { vault: vault.address, amount_usdg: '25', wallet: holder }],
+  ['prepare_withdraw', { vault: vault.address, amount_usdg: 'all', wallet: holder }],
+  ['prepare_borrow', { market_id: market.id, collateral_amount: '1', borrow_usdg: '10', wallet: holder }],
+  ['prepare_repay', { market_id: market.id, amount_usdg: 'all', wallet: holder }],
+] as const) {
+  const r = await callAgentTool(name, args, desk, down)
+  assert.ok(!r.isError, `${name} errored on an outage: ${r.content[0].text}`)
+  const o = r.structuredContent!
+  assert.ok(String(o.open_url).startsWith('https://escorpio.pro/'), `${name} gave no link on an outage`)
+  assert.equal((o.simulation as { passed: null }).passed, null, `${name} claimed a simulation result on an outage`)
+  assert.equal(o.blocked, undefined, `${name} reported a block it never read`)
+}
+const borNoWallet = await callAgentTool('prepare_borrow', { market_id: market.id, borrow_usdg: '10' }, desk, down)
+assert.ok(!borNoWallet.isError, 'prepare_borrow without a wallet needed the chain')
+const payDown = (await callAgentTool('check_payment', { tx_hash: tx.transactionHash }, desk, down)).structuredContent!
+assert.equal(payDown.found, null, 'an outage read as "no such transaction"')
 
 console.log(`ok deposit 25 USDG into ${vault.name} for ${holder.slice(0, 8)}…: ${real.steps.length} step(s), simulation passed`)
 console.log(`ok loan limits on ${sym} market ${(market.id as Hex).slice(0, 10)}…, payment request and payment check`)

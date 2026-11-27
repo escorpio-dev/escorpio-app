@@ -18,7 +18,8 @@ export function ReceiptPage() {
   const parsed = useMemo(() => fromQuery(search), [search])
   const req = parsed.ok ? parsed.req : undefined
   const [rc, setRc] = useState<Receipt | null>()
-  const [signed, setSigned] = useState<boolean>()
+  const [signed, setSigned] = useState<boolean | 'down'>() // down: Robinhood Chain did not answer
+  const [down, setDown] = useState(false) // the last read failed because the chain did not answer
   const [tries, setTries] = useState(0)
 
   // A fresh payment may not be on chain yet: look again every 3 s, up to 40 tries (2 minutes).
@@ -27,7 +28,13 @@ export function ReceiptPage() {
     let live = true
     let timer: ReturnType<typeof setTimeout>
     const look = async (n: number) => {
-      const r = await readReceipt(publicClient, tx as Hash).catch(() => undefined)
+      let r
+      try {
+        r = await readReceipt(publicClient, tx as Hash)
+        setDown(false)
+      } catch {
+        setDown(true)
+      }
       if (!live) return
       setTries(n)
       if (r) return setRc(r)
@@ -44,7 +51,9 @@ export function ReceiptPage() {
   useEffect(() => {
     if (!req) return
     let live = true
-    void verifyRequest(publicClient, req).then((ok) => live && setSigned(ok))
+    verifyRequest(publicClient, req)
+      .then((ok) => live && setSigned(ok))
+      .catch(() => live && setSigned('down'))
     return () => {
       live = false
     }
@@ -75,14 +84,17 @@ export function ReceiptPage() {
           </p>
         ) : rc === null ? (
           <p role="status" className="text-[16px] text-body">
-            Robinhood Chain has no transaction with this hash after 2 minutes. If the wallet showed it as sent, reload this
-            page later or check it on the explorer.
+            {down
+              ? 'Robinhood Chain did not answer for 2 minutes, so this payment could not be read. Reload this page later or check it on the explorer.'
+              : 'Robinhood Chain has no transaction with this hash after 2 minutes. If the wallet showed it as sent, reload this page later or check it on the explorer.'}
           </p>
         ) : (
           <>
             {req && m && (
-              <p role="status" className={`mb-6 border-b border-line pb-4 text-[16px] ${m.paid && signed ? 'text-accent' : 'text-antares-ink'}`}>
-                {signed === false
+              <p role="status" className={`mb-6 border-b border-line pb-4 text-[16px] ${m.paid && signed === true ? 'text-accent' : signed === 'down' ? 'text-body' : 'text-antares-ink'}`}>
+                {signed === 'down'
+                  ? 'Could not check the payee signature just now: Robinhood Chain did not answer. Reload the page to try again.'
+                  : signed === false
                   ? 'The request in this link is not signed by the payee, so it proves nothing about what was asked.'
                   : m.paid
                     ? `Paid: ${U(req.amount)} USDG reached ${shortAddress(req.to)}${m.refMatch ? ', and the reference matches this request.' : '. The reference in the transaction does not match this request.'}`
