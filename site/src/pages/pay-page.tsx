@@ -12,7 +12,7 @@ import { erc20Abi, plainError, USDG_DECIMALS } from '@/lib/vault-tx'
 
 // /pay?to=…&amount=…&ref=…&sig=…: a payment link from /receive. The page checks the payee signed exactly this request,
 // then the payer sends a plain USDG transfer from their own wallet straight to the payee. Simulated before signing.
-type Check = 'checking' | 'valid' | 'invalid'
+type Check = 'checking' | 'valid' | 'invalid' | 'down' // down: Robinhood Chain did not answer, nothing is known yet
 type Sim = { ok: true } | { ok: false; why: string } | undefined
 const U = (v: bigint) => showUnits(v, USDG_DECIMALS)
 
@@ -23,6 +23,7 @@ export function PayPage() {
   const navigate = useNavigate()
   const { address, onRobinhood } = useWallet()
   const [check, setCheck] = useState<Check>('checking')
+  const [tryAgain, setTryAgain] = useState(0)
   const [bal, setBal] = useState<{ usdg: bigint; eth: bigint }>()
   const [readErr, setReadErr] = useState(false)
   const [sim, setSim] = useState<Sim>()
@@ -31,11 +32,14 @@ export function PayPage() {
   useEffect(() => {
     if (!req) return
     let live = true
-    void verifyRequest(publicClient, req).then((ok) => live && setCheck(ok ? 'valid' : 'invalid'))
+    setCheck('checking')
+    verifyRequest(publicClient, req)
+      .then((ok) => live && setCheck(ok ? 'valid' : 'invalid'))
+      .catch(() => live && setCheck('down'))
     return () => {
       live = false
     }
-  }, [req])
+  }, [req, tryAgain])
 
   const refresh = useCallback(async () => {
     if (!address) return
@@ -133,6 +137,13 @@ export function PayPage() {
           <p role="status" className="mt-6 border-t border-line pt-4 text-[15px]">
             {check === 'checking' ? (
               <span className="text-muted">Checking the signature…</span>
+            ) : check === 'down' ? (
+              <span className="text-body">
+                Could not check the signature: Robinhood Chain did not answer.{' '}
+                <button type="button" className="accent-link" onClick={() => setTryAgain((n) => n + 1)}>
+                  Try again
+                </button>
+              </span>
             ) : check === 'valid' ? (
               <span className="text-accent">Signed by {shortAddress(req.to)}, the wallet being paid. Nothing in this link was changed.</span>
             ) : (
@@ -146,7 +157,7 @@ export function PayPage() {
 
         <section aria-label="Pay" className="border border-line-2 p-6 sm:p-8">
           {!canPay ? (
-            <p className="text-[16px] text-body">{check === 'checking' ? 'Checking the link first…' : 'This link cannot be paid.'}</p>
+            <p className="text-[16px] text-body">{check === 'checking' || check === 'down' ? 'Checking the link first…' : 'This link cannot be paid.'}</p>
           ) : !address ? (
             <WalletPicker lead="Connect the wallet you pay from. Escorpio reads its address and balance; you sign the payment in the wallet." />
           ) : !onRobinhood ? (

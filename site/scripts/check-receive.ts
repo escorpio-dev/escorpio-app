@@ -2,10 +2,10 @@
 // throwaway in-memory key, the link round trip, tampering and expiry, the USDG transfer (with the ref at the end of the
 // calldata) simulated with a state override, and a receipt read from a real past USDG transfer. Run: npm run check:receive
 import assert from 'node:assert/strict'
-import { encodeFunctionData, parseAbiItem, parseUnits, type Address, type Hex } from 'viem'
+import { createPublicClient, custom, encodeFunctionData, HttpRequestError, parseAbiItem, parseUnits, type Address, type Hex } from 'viem'
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts'
 import { USDG } from '../src/data/morpho.ts'
-import { publicClient as pc } from '../src/lib/chain.ts'
+import { publicClient as pc, robinhood } from '../src/lib/chain.ts'
 import {
   expired,
   fromQuery,
@@ -76,6 +76,16 @@ const m = matches(rc, { to: log.args.to!, amount: log.args.value!, memo: '', ref
 assert.ok(m.paid, 'real transfer did not match its own amount and payee')
 assert.equal(matches(rc, { to: log.args.to!, amount: log.args.value! + 1n, memo: '', ref: '0x0000000000000000', expires: 0n }).paid, false, 'wrong amount matched')
 assert.equal(await readReceipt(pc, `0x${'00'.repeat(32)}`), undefined, 'made-up hash returned a receipt')
+
+// 7. Robinhood Chain not answering (the public RPC refuses bursts with "Too Many Requests") must never read as a bad
+// signature or a missing payment: a plain wallet's signature is checked without the chain, anything else throws.
+const down = createPublicClient({
+  chain: robinhood,
+  transport: custom({ request: async () => { throw new HttpRequestError({ url: 'https://rpc.test', status: 429, details: 'Too Many Requests' }) } }, { retryCount: 0 }),
+})
+assert.equal(await verifyRequest(down, back), true, 'a genuine plain-wallet signature needed the chain')
+await assert.rejects(verifyRequest(down, { ...back, amount: back.amount + 1n }), 'an outage read as "signature does not match"')
+await assert.rejects(readReceipt(down, log.transactionHash!), 'an outage read as "no such transaction"')
 
 console.log(`ok receipt ${rc.hash.slice(0, 10)}… block ${rc.block}: ${rc.transfers.length} USDG transfer(s), ref ${rc.ref ?? 'none'}`)
 console.log('receive check passed: sign, link, tamper, expiry, pay with ref, receipt')

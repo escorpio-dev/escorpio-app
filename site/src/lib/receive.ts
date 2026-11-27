@@ -1,4 +1,21 @@
-import { formatUnits, isAddress, isHex, parseAbi, parseEventLogs, type Address, type Hash, type Hex, type PublicClient } from 'viem'
+import {
+  BaseError,
+  formatUnits,
+  HttpRequestError,
+  isAddress,
+  isHex,
+  parseAbi,
+  parseEventLogs,
+  recoverTypedDataAddress,
+  RpcRequestError,
+  TimeoutError,
+  TransactionNotFoundError,
+  TransactionReceiptNotFoundError,
+  type Address,
+  type Hash,
+  type Hex,
+  type PublicClient,
+} from 'viem'
 import { CHAIN_ID, USDG } from '../data/morpho.ts'
 import { USDG_DECIMALS } from './vault-tx.ts'
 
@@ -85,11 +102,29 @@ export function fromQuery(search: string): { ok: true; req: Signed } | { ok: fal
   return { ok: true, req: { to, amount, memo, ref: ref.toLowerCase() as Hex, expires: BigInt(exp), sig } }
 }
 
-/** Did the payee sign exactly this request? Works for plain wallets and smart-contract wallets (ERC-1271). */
+/** The chain did not answer (network, timeout, rate limit), as opposed to answering "no". Callers must not read
+ * this as a bad signature or a missing transaction. */
+export const isChainDown = (e: unknown) =>
+  e instanceof BaseError && !!e.walk((x) => x instanceof HttpRequestError || x instanceof RpcRequestError || x instanceof TimeoutError)
+
+/** Did the payee sign exactly this request? A plain wallet's signature is checked locally, without the chain. Anything
+ * else (a smart-contract wallet, ERC-1271) is asked of the chain. Throws when the chain does not answer, so an outage
+ * never reads as "the signature does not match". */
 export async function verifyRequest(pc: PublicClient, s: Signed): Promise<boolean> {
   try {
-    return await pc.verifyTypedData({ address: s.to, signature: s.sig, ...typedData(s) })
+    if ((await recoverTypedDataAddress({ signature: s.sig, ...typedData(s) })).toLowerCase() === s.to.toLowerCase()) return true
   } catch {
+    // Not a plain 65-byte signature: ask the chain below.
+  }
+  // getCode throws when the chain does not answer (viem's verifyTypedData would quietly say false). A plain wallet
+  // whose 65-byte signature did not recover above is simply not the signer; contract wallets and wrapped signatures
+  // (ERC-1271, ERC-6492) are checked by the chain.
+  const code = await pc.getCode({ address: s.to })
+  if ((!code || code === '0x') && s.sig.length === 132) return false
+  try {
+    return await pc.verifyTypedData({ address: s.to, signature: s.sig, ...typedData(s) })
+  } catch (e) {
+    if (isChainDown(e)) throw e
     return false
   }
 }
@@ -126,9 +161,14 @@ export type Receipt = {
   ref?: Hex // ref found at the end of the calldata, if any
 }
 
-/** Reads a transaction and every USDG transfer in it. Undefined when the chain has no such transaction yet. */
+/** Reads a transaction and every USDG transfer in it. Undefined when the chain has no such transaction yet; throws
+ * when the chain does not answer, so an outage never reads as "not found". */
 export async function readReceipt(pc: PublicClient, hash: Hash): Promise<Receipt | undefined> {
-  const [tx, rc] = await Promise.all([pc.getTransaction({ hash }).catch(() => undefined), pc.getTransactionReceipt({ hash }).catch(() => undefined)])
+  const notFound = (e: unknown) => {
+    if (e instanceof BaseError && e.walk((x) => x instanceof TransactionNotFoundError || x instanceof TransactionReceiptNotFoundError)) return undefined
+    throw e
+  }
+  const [tx, rc] = await Promise.all([pc.getTransaction({ hash }).catch(notFound), pc.getTransactionReceipt({ hash }).catch(notFound)])
   if (!tx || !rc) return undefined
   const block = await pc.getBlock({ blockNumber: rc.blockNumber })
   const transfers = parseEventLogs({ abi: transferAbi, logs: rc.logs, eventName: 'Transfer' })

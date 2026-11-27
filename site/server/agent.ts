@@ -4,7 +4,7 @@
 // whole plan on chain (eth_call, no transaction), using the same plan functions as the site's dialogs. The answer
 // carries a link that opens the page filled in; the page reads the wallet again, simulates again and waits for the
 // owner's signature. The wallet address is used for the reads and is not stored or counted (server/usage.ts).
-import { isAddress, isHash, zeroAddress, type Address, type Hash, type Hex, type PublicClient } from 'viem'
+import { isAddress, isHash, type Address, type Hash, type Hex, type PublicClient } from 'viem'
 import { marketNotes, vaultNotes } from '../src/data/desk.ts'
 import type { Desk } from '../src/data/morpho.ts'
 import { isAmount, loanLink, receiveLink, vaultLink } from '../src/lib/action-link.ts'
@@ -23,6 +23,20 @@ const fail = (text: string): ToolOut => ({ isError: true, content: [{ type: 'tex
 const done = (data: Record<string, unknown>): ToolOut => ({ content: [{ type: 'text', text: JSON.stringify(data, null, 2) }], structuredContent: data })
 const SIGN =
   'Give open_url to the wallet owner. It opens escorpio.pro with this filled in; the page reads the wallet again, shows every step in plain words, simulates it, and only the owner can sign, in their own wallet. Escorpio and this tool cannot sign or send anything.'
+
+// The public Robinhood Chain RPC refuses most eth_call traffic from Cloudflare's servers ("Too Many Requests"), while
+// the same calls from a person's browser pass. So a chain read here may fail: the tool then still returns the link and
+// says plainly that it was not simulated here. The page always reads the wallet and simulates in the browser anyway.
+const NO_CHAIN =
+  "Escorpio's server could not read Robinhood Chain just now, so this was not checked against the wallet or simulated here. The page at open_url reads the wallet and simulates every step in the browser before anything can be signed."
+const chainError = (e: unknown) => {
+  const x = e as { details?: string; shortMessage?: string; message?: string }
+  return String(x.details ?? x.shortMessage ?? x.message ?? e).slice(0, 160)
+}
+// A simulation that failed because the RPC did not answer (viem's plain-sentence errors), not because the plan is wrong.
+const chainDidNotAnswer = (why: string) => /too many requests|rate limit|429|request failed|fetch failed|timed out|took too long/i.test(why)
+const withoutChain = (out: Record<string, unknown>, e: unknown, summary: string): ToolOut =>
+  done({ ...out, simulation: { passed: null, why: NO_CHAIN }, chainError: chainError(e), summary: `${summary} Not simulated by Escorpio's server (Robinhood Chain RPC did not answer); the page simulates before signing.` })
 
 const PREPARE = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true }
 const wallet = { type: 'string', pattern: '^0x[0-9a-fA-F]{40}$', description: 'Optional. The wallet that will sign. With it the tool reads its balances and simulates the whole plan on chain (no transaction). Not stored.' }
@@ -163,17 +177,21 @@ async function vaultTool(name: 'prepare_deposit' | 'prepare_withdraw', args: Arg
     vault: vaultOut(vault, d.readAt),
   }
   if (!all && toUnits(raw, USDG_DECIMALS) === 0n) return fail('amount_usdg must be more than 0.')
-  if (!w.wallet) {
-    out.summary = `${mode === 'deposit' ? 'Deposit' : 'Withdraw'} ${all ? 'everything' : `${raw} USDG`} ${mode === 'deposit' ? 'into' : 'from'} ${vault.name}. Pass wallet to see the steps and simulate it.`
-    return done(out)
+  const plain = `${mode === 'deposit' ? 'Deposit' : 'Withdraw'} ${all ? 'everything' : `${raw} USDG`} ${mode === 'deposit' ? 'into' : 'from'} ${vault.name}.`
+  if (!w.wallet) return done({ ...out, summary: `${plain} Pass wallet to see the steps and simulate it.` })
+  let pos
+  try {
+    pos = await readPosition(pc, w.wallet, vault.address as Address)
+  } catch (e) {
+    return withoutChain(out, e, plain)
   }
-  const pos = await readPosition(pc, w.wallet, vault.address as Address)
   const amount = all ? pos.inVault : toUnits(raw, USDG_DECIMALS)
   out.wallet = { address: w.wallet, usdg: U(pos.usdg), inThisVault: U(pos.inVault), hasEthForFees: pos.eth > 0n }
   if (all && amount === 0n) return done({ ...out, blocked: 'This wallet has nothing in this vault.', summary: 'Nothing to withdraw.' })
   const block = vaultBlock(mode, amount, pos)
   if (block) return done({ ...out, blocked: block, summary: `Cannot ${mode} ${U(amount)} USDG: ${block}` })
   const sim = await simulateVaultPlan(pc, w.wallet, vault.address as Address, mode, amount, pos)
+  if (!sim.ok && chainDidNotAnswer(sim.why)) return withoutChain(out, sim.why, plain)
   const steps = vaultSteps(mode, amount, pos).map((s) => s.label)
   out.steps = steps
   out.simulation = sim.ok
@@ -202,14 +220,9 @@ async function loanTool(name: 'prepare_borrow' | 'prepare_repay' | 'prepare_coll
   if (mode === 'borrow' && notes.some((n) => n.stop))
     return fail(`Escorpio does not offer new loans in this market right now: ${notes.filter((n) => n.stop).map((n) => n.text).join('; ')}. Repaying and taking collateral back still work.`)
 
-  // The market's own parameters, token decimals and oracle price come from the chain. Without a wallet the reads use
-  // the zero address, so balances read as 0 and only the amounts are checked.
-  const loan = await readLoan(pc, w.wallet ?? zeroAddress, market.id as Hex)
-  const coll = rawColl ? toUnits(rawColl, loan.collDecimals) : 0n
-  if (rawColl && coll === 0n) return fail('collateral_amount must be more than 0.')
-  const usdgAmt = rawUsdg === 'all' ? loan.debt : rawUsdg ? toUnits(rawUsdg, USDG_DECIMALS) : 0n
-  if (rawUsdg && rawUsdg !== 'all' && usdgAmt === 0n) return fail('The USDG amount must be more than 0.')
-  const C = (v: bigint) => showUnits(v, loan.collDecimals, 2)
+  if (rawColl && !/[1-9]/.test(rawColl)) return fail('collateral_amount must be more than 0.')
+  if (rawUsdg && rawUsdg !== 'all' && toUnits(rawUsdg, USDG_DECIMALS) === 0n) return fail('The USDG amount must be more than 0.')
+  const symbol = market.collateral.symbol
   const out: Record<string, unknown> = {
     ...about(d),
     action: mode === 'collateral' ? 'collateral_withdraw' : mode,
@@ -220,14 +233,23 @@ async function loanTool(name: 'prepare_borrow' | 'prepare_repay' | 'prepare_coll
   }
   // The action in a few words, for the summary: "put in 2 NVDA and borrow 500 USDG".
   let what: string
-  if (mode === 'borrow') what = [rawColl && `put in ${rawColl} ${loan.collSymbol}`, rawUsdg && `borrow ${rawUsdg} USDG`].filter(Boolean).join(' and ')
+  if (mode === 'borrow') what = [rawColl && `put in ${rawColl} ${symbol}`, rawUsdg && `borrow ${rawUsdg} USDG`].filter(Boolean).join(' and ')
   else if (mode === 'repay') what = rawUsdg === 'all' ? 'repay the whole loan' : `repay ${rawUsdg} USDG`
-  else what = `take back ${rawColl} ${loan.collSymbol}`
+  else what = `take back ${rawColl} ${symbol}`
   const What = what[0].toUpperCase() + what.slice(1)
-  if (!w.wallet) {
-    out.summary = `${What} on the ${loan.collSymbol} market. Pass wallet to check the loan limit, see the steps and simulate it.`
-    return done(out)
+  const plain = `${What} on the ${symbol} market.`
+  if (!w.wallet) return done({ ...out, summary: `${plain} Pass wallet to check the loan limit, see the steps and simulate it.` })
+
+  // The wallet's loan, the market's parameters, token decimals and oracle price come from the chain.
+  let loan
+  try {
+    loan = await readLoan(pc, w.wallet, market.id as Hex)
+  } catch (e) {
+    return withoutChain(out, e, plain)
   }
+  const coll = rawColl ? toUnits(rawColl, loan.collDecimals) : 0n
+  const usdgAmt = rawUsdg === 'all' ? loan.debt : rawUsdg ? toUnits(rawUsdg, USDG_DECIMALS) : 0n
+  const C = (v: bigint) => showUnits(v, loan.collDecimals, 2)
   const after = loanAfter(loan, mode, coll, usdgAmt)
   out.wallet = {
     address: w.wallet,
@@ -248,6 +270,7 @@ async function loanTool(name: 'prepare_borrow' | 'prepare_repay' | 'prepare_coll
   if (block) return done({ ...out, blocked: block, summary: `Cannot ${what}: ${block}` })
   const plan = loanPlan(loan, mode, coll, usdgAmt)
   const sim = await simulateLoanPlan(pc, w.wallet, market.id as Hex, loan, mode, coll, usdgAmt)
+  if (!sim.ok && chainDidNotAnswer(sim.why)) return withoutChain(out, sim.why, plain)
   out.steps = plan.steps.map((s) => s.label)
   out.simulation = sim.ok ? { passed: true, result: sim.note } : { passed: false, why: sim.why }
   out.summary = `${What} on the ${loan.collSymbol} market: ${plan.steps.length} signature${plan.steps.length > 1 ? 's' : ''}. Simulation ${sim.ok ? `passed: ${sim.note}` : `failed: ${sim.why}`}`
@@ -285,8 +308,13 @@ async function checkPaymentTool(args: Args, pc: PublicClient): Promise<ToolOut> 
     if (!parsed.ok) return fail(`The payment link does not work: ${parsed.why}`)
     req = parsed.req
   }
-  const rc = await readReceipt(pc, hash as Hash)
   const receiptUrl = `https://escorpio.pro/receipt?tx=${hash}${search ? `&${search.slice(1)}` : ''}`
+  let rc
+  try {
+    rc = await readReceipt(pc, hash as Hash)
+  } catch (e) {
+    return done({ tx_hash: hash, found: null, chainError: chainError(e), receipt_url: receiptUrl, summary: "Escorpio's server could not read Robinhood Chain just now. Open receipt_url: the receipt page reads the payment in the browser." })
+  }
   if (!rc) return done({ tx_hash: hash, found: false, summary: 'Robinhood Chain has no transaction with this hash yet. A payment sent seconds ago can take a moment; check again.', receipt_url: receiptUrl })
   const out: Record<string, unknown> = {
     tx_hash: hash,
@@ -303,12 +331,15 @@ async function checkPaymentTool(args: Args, pc: PublicClient): Promise<ToolOut> 
     out.summary = rc.ok ? `Succeeded. ${rc.transfers.length} USDG transfer(s) in it.` : 'This transaction failed on chain; nothing moved.'
     return done(out)
   }
-  const signed = await verifyRequest(pc, req)
+  // A plain wallet's signature is checked without the chain; only a smart-wallet check can fail on an outage.
+  const signed = await verifyRequest(pc, req).catch(() => null)
   const m = matches(rc, req)
   out.request = { payee: req.to, usdg: U(req.amount), memo: req.memo || null, reference: req.ref, signedByPayee: signed, expired: expired(req, Math.floor(Date.now() / 1000)) }
-  out.paid = signed && m.paid
+  out.paid = signed === null ? null : signed && m.paid
   out.referenceMatches = m.refMatch
-  out.summary = !signed
+  out.summary = signed === null
+    ? "Escorpio's server could not check the payee's signature just now (Robinhood Chain did not answer). Open receipt_url to check it in the browser."
+    : !signed
     ? 'The payment link is not signed by the payee, so it proves nothing about what was asked.'
     : m.paid
       ? `Paid: ${U(req.amount)} USDG reached ${req.to}${m.refMatch ? ', and the reference matches this request.' : '. The reference in the transaction does not match this request (it may have been paid outside the pay page).'}`
