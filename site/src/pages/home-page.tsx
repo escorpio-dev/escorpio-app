@@ -347,7 +347,7 @@ function Features() {
               </header>
               <p>{f.d}</p>
               <footer>
-                <span>Not live yet{TOKEN_LIVE && ' · holders first'}</span>
+                <span>Not live yet{TOKEN_LIVE && ` · holders of ${holderMinText()} first, as a beta`}</span>
               </footer>
             </article>
           ))}
