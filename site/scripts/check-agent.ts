@@ -13,6 +13,7 @@ import { LOAN_CAP, loanBlock, loanPlan, withMargin, type Loan } from '../src/lib
 import { newRef, toQuery, typedData } from '../src/lib/receive.ts'
 import { erc20Abi } from '../src/lib/vault-tx.ts'
 import { AGENT_TOOLS, callAgentTool } from '../server/agent.ts'
+import { serverClient } from '../server/rpc.ts'
 import { handle } from '../server/mcp.ts'
 
 const live = parseDesk(await fetchMorpho(), Date.now())
@@ -160,6 +161,23 @@ const borNoWallet = await callAgentTool('prepare_borrow', { market_id: market.id
 assert.ok(!borNoWallet.isError, 'prepare_borrow without a wallet needed the chain')
 const payDown = (await callAgentTool('check_payment', { tx_hash: tx.transactionHash }, desk, down)).structuredContent!
 assert.equal(payDown.found, null, 'an outage read as "no such transaction"')
+
+// 8. The server's own RPC (server/rpc.ts): no secrets means the public client; a non-https value is ignored. With the
+// provider URLs in the environment (ROBINHOOD_RPC_ALCHEMY / ROBINHOOD_RPC_CHAINSTACK from the secrets file, the same
+// values as the Pages secrets RPC_ALCHEMY / RPC_CHAINSTACK), each provider alone must simulate the real holder's deposit.
+assert.equal(serverClient(undefined), pc, 'no secrets did not give the public client')
+assert.equal(serverClient({ RPC_ALCHEMY: 'not a url' }), pc, 'a broken secret was used')
+const providers = { RPC_ALCHEMY: process.env.ROBINHOOD_RPC_ALCHEMY, RPC_CHAINSTACK: process.env.ROBINHOOD_RPC_CHAINSTACK }
+const tried: string[] = []
+for (const [name, url] of Object.entries(providers)) {
+  if (!url) continue
+  const r = await callAgentTool('prepare_deposit', { vault: vault.address, amount_usdg: '25', wallet: holder }, desk, serverClient({ [name]: url }))
+  assert.ok(!r.isError, `${name}: ${r.content[0].text}`)
+  const sim = r.structuredContent!.simulation as { passed: boolean | null; why?: string }
+  assert.equal(sim.passed, true, `${name} did not simulate: ${sim.why}`)
+  tried.push(name)
+}
+console.log(tried.length ? `ok server rpc: ${tried.join(', ')} simulated the deposit` : 'server rpc: provider check skipped (no ROBINHOOD_RPC_* in the environment)')
 
 console.log(`ok deposit 25 USDG into ${vault.name} for ${holder.slice(0, 8)}…: ${real.steps.length} step(s), simulation passed`)
 console.log(`ok loan limits on ${sym} market ${(market.id as Hex).slice(0, 10)}…, payment request and payment check`)

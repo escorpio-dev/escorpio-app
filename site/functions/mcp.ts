@@ -2,6 +2,7 @@
 // No sessions and no server-sent stream, so GET answers 405 as the spec allows. Read-only tools, see server/mcp.ts.
 import { readDesk, type Ctx } from '../server/api.ts'
 import { SUPPORTED_VERSIONS, handle } from '../server/mcp.ts'
+import { serverClient, type RpcEnv } from '../server/rpc.ts'
 import { mcpCalls, record, sourceOf, type UsageEnv } from '../server/usage.ts'
 
 const CORS = {
@@ -28,7 +29,7 @@ export function onRequestGet() {
   )
 }
 
-export async function onRequestPost(ctx: Ctx & { env?: UsageEnv }) {
+export async function onRequestPost(ctx: Ctx & { env?: UsageEnv & RpcEnv }) {
   const version = ctx.request.headers.get('mcp-protocol-version')
   if (version && !SUPPORTED_VERSIONS.includes(version)) return rpcError(-32600, `Unsupported MCP-Protocol-Version: ${version}`)
   const text = await ctx.request.text()
@@ -42,11 +43,12 @@ export async function onRequestPost(ctx: Ctx & { env?: UsageEnv }) {
   const source = sourceOf(ctx.request)
   for (const c of mcpCalls(msg)) record(ctx.env, { kind: 'mcp', ...c, source })
   const desk = () => readDesk(ctx)
+  const pc = serverClient(ctx.env)
   if (Array.isArray(msg)) {
     if (!msg.length || msg.length > 20) return rpcError(-32600, 'Invalid batch')
-    const out = (await Promise.all(msg.map((m) => handle(m, desk)))).filter(Boolean)
+    const out = (await Promise.all(msg.map((m) => handle(m, desk, pc)))).filter(Boolean)
     return out.length ? reply(out) : new Response(null, { status: 202, headers: CORS })
   }
-  const out = await handle(msg as never, desk)
+  const out = await handle(msg as never, desk, pc)
   return out ? reply(out) : new Response(null, { status: 202, headers: CORS })
 }
