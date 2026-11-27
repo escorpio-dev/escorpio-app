@@ -3,6 +3,7 @@
 // action or payment request for the wallet owner to sign on escorpio.pro. Nothing here can sign, send or hold anything.
 // Spec: https://modelcontextprotocol.io/specification/2025-06-18/basic/transports
 import { OWN_NOTES, STOP_CODES, WARNING_TEXT, headlineVaults } from '../src/data/desk.ts'
+import type { PublicClient } from 'viem'
 import type { Desk } from '../src/data/morpho.ts'
 import { AGENT_ARGS, AGENT_TOOLS, callAgentTool } from './agent.ts'
 import { about, marketOut, rates, vaultOut } from './api.ts'
@@ -87,7 +88,7 @@ function riskNotes() {
 }
 
 /** Runs one tool. Unknown arguments are rejected by name so a model sees its mistake. */
-export async function callTool(name: string, args: Record<string, unknown>, desk: () => Promise<Desk>) {
+export async function callTool(name: string, args: Record<string, unknown>, desk: () => Promise<Desk>, pc?: PublicClient) {
   const allowed: Record<string, string[]> = {
     get_best_rates: [],
     list_vaults: ['open_only', 'limit'],
@@ -99,7 +100,7 @@ export async function callTool(name: string, args: Record<string, unknown>, desk
   const extra = Object.keys(args).filter((k) => !allowed[name].includes(k))
   if (extra.length) return { isError: true, content: [{ type: 'text', text: `Unknown argument(s) for ${name}: ${extra.join(', ')}` }] }
   if (name === 'explain_risk_notes') return result(riskNotes())
-  if (name in AGENT_ARGS) return callAgentTool(name, args, desk)
+  if (name in AGENT_ARGS) return callAgentTool(name, args, desk, pc)
 
   const d = await desk()
   if (name === 'get_best_rates') return result(rates(d))
@@ -120,7 +121,8 @@ export async function callTool(name: string, args: Record<string, unknown>, desk
 const result = (data: Record<string, unknown>) => ({ content: [{ type: 'text', text: JSON.stringify(data, null, 2) }], structuredContent: data })
 
 /** Handles one JSON-RPC message. Returns undefined for notifications (no reply). */
-export async function handle(msg: Rpc, desk: () => Promise<Desk>): Promise<Out | undefined> {
+/** pc: the chain client for the agent tools (server/rpc.ts); the public client when left out. */
+export async function handle(msg: Rpc, desk: () => Promise<Desk>, pc?: PublicClient): Promise<Out | undefined> {
   if (!msg || typeof msg !== 'object' || msg.jsonrpc !== '2.0' || typeof msg.method !== 'string') return err(msg?.id, -32600, 'Invalid request')
   const isNotification = !('id' in msg) || msg.id === undefined
   if (isNotification) return undefined
@@ -145,7 +147,7 @@ export async function handle(msg: Rpc, desk: () => Promise<Desk>): Promise<Out |
         const name = typeof params.name === 'string' ? params.name : ''
         const args = params.arguments && typeof params.arguments === 'object' ? (params.arguments as Record<string, unknown>) : {}
         try {
-          return ok(id, await callTool(name, args, desk))
+          return ok(id, await callTool(name, args, desk, pc))
         } catch (e) {
           const code = (e as { rpc?: number }).rpc
           if (code) return err(id, code, (e as Error).message)

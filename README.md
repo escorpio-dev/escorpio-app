@@ -104,7 +104,11 @@ again, simulates again and waits for the owner's signature.
 claude mcp add --transport http escorpio https://escorpio.pro/mcp
 ```
 
-Code: `site/functions/mcp.ts`, `site/server/mcp.ts` and `site/server/agent.ts`, checked by `npm run check:mcp` and
+The server reads the chain through Alchemy, then Chainstack, then the public RPC (the public one refuses most
+`eth_call` from Cloudflare). Set the provider endpoints as Pages secrets, never in code: `npx wrangler pages secret put
+RPC_ALCHEMY --project-name escorpio` and the same for `RPC_CHAINSTACK`. The site in the browser keeps the public RPC.
+
+Code: `site/functions/mcp.ts`, `site/server/mcp.ts`, `site/server/rpc.ts` and `site/server/agent.ts`, checked by `npm run check:mcp` and
 `npm run check:agent`. Link format: `site/src/lib/action-link.ts`.
 
 ## Run it locally
