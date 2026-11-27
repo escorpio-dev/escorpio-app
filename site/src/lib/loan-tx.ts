@@ -1,6 +1,7 @@
 import { encodeAbiParameters, keccak256, numberToHex, parseAbi, type Address, type Hex, type PublicClient, type StateOverride } from 'viem'
 import { MORPHO_BLUE } from '../data/morpho.ts'
-import { erc20Abi } from './vault-tx.ts'
+import { showUnits } from './units.ts'
+import { USDG_DECIMALS, erc20Abi, plainError, usdgOverride } from './vault-tx.ts'
 
 // Borrowing USDG on Morpho Blue from the user's own wallet: put up collateral, borrow, repay, take the collateral back.
 // Escorpio has no contract. Approvals go to Morpho Blue itself for the exact amount, and every step is simulated
@@ -131,3 +132,109 @@ export const simulateRepay = (pc: PublicClient, account: Address, p: MarketParam
 
 export const simulateWithdrawCollateral = (pc: PublicClient, account: Address, p: MarketParams, amount: bigint) =>
   pc.simulateContract({ account, address: BLUE, abi: blueAbi, functionName: 'withdrawCollateral', args: [p, amount, account, account] })
+
+// ---- one loan action, planned the same way by the site dialog and the MCP server -----------------------------------
+// Escorpio stops at 90% of the market's liquidation line: a loan right at the line is liquidated by the next small move.
+
+export type LoanMode = 'borrow' | 'repay' | 'collateral'
+export type LoanSim = { ok: true; note: string } | { ok: false; why: string }
+export const LOAN_CAP = 90n // percent of the liquidation line Escorpio lets a loan reach
+export const LOAN_WARN = 80n
+// Interest keeps building while the user signs, so a full repayment needs a little more allowance than today's debt.
+export const withMargin = (debt: bigint) => debt + debt / 2000n + 10n
+const U = (v: bigint) => showUnits(v, USDG_DECIMALS)
+const Cn = (loan: Loan) => (v: bigint) => showUnits(v, loan.collDecimals, 2)
+
+/** The loan as it would be after this action. */
+export function loanAfter(loan: Loan, mode: LoanMode, coll: bigint, usdgAmt: bigint) {
+  const collateral = mode === 'borrow' ? loan.collateral + coll : mode === 'collateral' ? loan.collateral - (coll > loan.collateral ? loan.collateral : coll) : loan.collateral
+  const debt = mode === 'borrow' ? loan.debt + usdgAmt : mode === 'repay' ? (usdgAmt >= loan.debt ? 0n : loan.debt - usdgAmt) : loan.debt
+  const limit = borrowLimit(collateral, loan.price, loan.params.lltv)
+  return { collateral, debt, limit, used: limit ? Number((debt * 10_000n) / limit) / 100 : debt ? Infinity : 0 }
+}
+
+/** Most USDG still borrowable with this much collateral, at Escorpio's cap. */
+export const loanCapRoom = (loan: Loan, after: { collateral: bigint }) => {
+  const room = (borrowLimit(after.collateral, loan.price, loan.params.lltv) * LOAN_CAP) / 100n - loan.debt
+  return room > 0n ? room : 0n
+}
+
+/** Why this action cannot go ahead, or undefined when it can be simulated. */
+export function loanBlock(loan: Loan, mode: LoanMode, coll: bigint, usdgAmt: bigint) {
+  const C = Cn(loan)
+  const after = loanAfter(loan, mode, coll, usdgAmt)
+  const over = after.debt > (after.limit * LOAN_CAP) / 100n
+  if (mode === 'borrow') {
+    if (coll === 0n && usdgAmt === 0n) return undefined
+    if (coll > loan.walletColl) return `Your wallet holds ${C(loan.walletColl)} ${loan.collSymbol}.`
+    if (over) return `That is past ${LOAN_CAP}% of the liquidation line. With this collateral you can borrow up to ${U(loanCapRoom(loan, after))} USDG here.`
+  }
+  if (mode === 'repay') {
+    if (usdgAmt === 0n) return undefined
+    if (loan.debt === 0n) return 'You owe nothing in this market.'
+    const need = usdgAmt >= loan.debt ? loan.debt : usdgAmt
+    if (need > loan.walletUsdg) return `Your wallet holds ${U(loan.walletUsdg)} USDG.`
+  }
+  if (mode === 'collateral') {
+    if (coll === 0n) return undefined
+    if (coll > loan.collateral) return `You have ${C(loan.collateral)} ${loan.collSymbol} in this market.`
+    if (over) return `Taking that much back would put the loan past ${LOAN_CAP}% of the liquidation line. Repay first.`
+  }
+  if (loan.eth === 0n) return 'Your wallet has no ETH on Robinhood Chain for the network fee. Add a little first.'
+  return undefined
+}
+
+export type LoanStep = { key: 'approve' | 'supply' | 'borrow' | 'repay' | 'withdraw'; label: string; text: string }
+
+/** The signatures this action needs, in order (empty when there is nothing to do or it is blocked). */
+export function loanPlan(loan: Loan, mode: LoanMode, coll: bigint, usdgAmt: bigint) {
+  const C = Cn(loan)
+  const repayAll = mode === 'repay' && loan.debt > 0n && usdgAmt >= loan.debt
+  const repayPull = repayAll ? withMargin(loan.debt) : usdgAmt
+  const steps: LoanStep[] = []
+  if (!loanBlock(loan, mode, coll, usdgAmt)) {
+    if (mode === 'borrow') {
+      if (coll > 0n && loan.collAllowance < coll) steps.push({ key: 'approve', label: `Allow ${C(coll)} ${loan.collSymbol}`, text: '' })
+      if (coll > 0n) steps.push({ key: 'supply', label: `Put in ${C(coll)} ${loan.collSymbol}`, text: `Put ${C(coll)} ${loan.collSymbol} in as collateral.` })
+      if (usdgAmt > 0n) steps.push({ key: 'borrow', label: `Borrow ${U(usdgAmt)} USDG`, text: `Borrowed ${U(usdgAmt)} USDG to your wallet.` })
+    }
+    if (mode === 'repay' && usdgAmt > 0n) {
+      if (loan.usdgAllowance < repayPull) steps.push({ key: 'approve', label: `Allow ${U(repayPull)} USDG`, text: '' })
+      steps.push({ key: 'repay', label: repayAll ? 'Repay all' : `Repay ${U(usdgAmt)} USDG`, text: repayAll ? 'Loan repaid in full.' : `Repaid ${U(usdgAmt)} USDG.` })
+    }
+    if (mode === 'collateral' && coll > 0n)
+      steps.push({ key: 'withdraw', label: `Take back ${C(coll)} ${loan.collSymbol}`, text: `${C(coll)} ${loan.collSymbol} back in your wallet.` })
+  }
+  return { repayAll, repayPull, steps }
+}
+
+/** Simulates the end result. Before the collateral is in, the borrow is simulated as if it were (Morpho Blue position
+ * override); before the USDG approval exists, the repay is simulated as if it did. */
+export async function simulateLoanPlan(pc: PublicClient, account: Address, id: Hex, loan: Loan, mode: LoanMode, coll: bigint, usdgAmt: bigint): Promise<LoanSim> {
+  const C = Cn(loan)
+  const p = loan.params
+  const { repayAll, repayPull } = loanPlan(loan, mode, coll, usdgAmt)
+  try {
+    if (mode === 'borrow') {
+      if (usdgAmt > 0n) {
+        await simulateBorrow(pc, account, p, usdgAmt, coll > 0n ? positionOverride(id, account, loan.collateral + coll, loan.borrowShares) : undefined)
+        return { ok: true, note: `the borrow of ${U(usdgAmt)} USDG would go through${coll > 0n ? ' once the collateral is in' : ''}.` }
+      }
+      if (loan.collAllowance >= coll) {
+        await simulateSupplyCollateral(pc, account, p, coll)
+        return { ok: true, note: `putting in ${C(coll)} ${loan.collSymbol} would go through.` }
+      }
+      await simulateApproveToken(pc, account, p.collateralToken, coll)
+      return { ok: true, note: 'the approval would go through; the deposit itself is simulated again after it.' }
+    }
+    if (mode === 'repay') {
+      const ov = loan.usdgAllowance < repayPull ? usdgOverride(account, BLUE, repayPull) : undefined
+      const { result } = await simulateRepay(pc, account, p, repayAll ? { shares: loan.borrowShares } : { assets: usdgAmt }, ov)
+      return { ok: true, note: `${U(result[0])} USDG of debt would be repaid.` }
+    }
+    await simulateWithdrawCollateral(pc, account, p, coll)
+    return { ok: true, note: `${C(coll)} ${loan.collSymbol} would come back to your wallet.` }
+  } catch (e) {
+    return { ok: false, why: plainError(e) }
+  }
+}

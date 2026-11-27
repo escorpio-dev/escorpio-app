@@ -1,4 +1,4 @@
-# escorpio.pro: everything is public and read-only. Agents: see /llms.txt and /docs.
+# escorpio.pro: everything is public. Nothing here can move money without the wallet owner's signature. Agents: see /llms.txt and /docs.
 User-agent: *
 Allow: /
 

@@ -3,7 +3,7 @@ import { GITHUB_URL, GithubIcon, X_HANDLE, X_URL, XIcon } from '@/components/bra
 import { EscorpioWordmark } from '@/components/escorpio-wordmark'
 import { TOKEN_LIVE } from '@/data/token'
 
-const NAV_CLASS: Record<string, string> = { '/method': 'k-nav-method', '/stats': 'k-nav-stats', '/docs': 'k-nav-docs' }
+const NAV_CLASS: Record<string, string> = { '/alerts': 'k-nav-alerts', '/method': 'k-nav-method', '/stats': 'k-nav-stats', '/docs': 'k-nav-docs' }
 
 // Floating header (classes in layout.css): page links, then the X and GitHub marks.
 export function SiteNav() {
@@ -20,6 +20,7 @@ export function SiteNav() {
               [
                 ['/earn', 'Earn'],
                 ['/borrow', 'Borrow'],
+                ['/receive', 'Receive'],
                 ['/alerts', 'Alerts'],
                 ['/method', 'Method'],
                 ['/stats', 'Stats'],

@@ -1,7 +1,7 @@
 ---
 name: escorpio
-description: Live USDG vault and loan rates on Robinhood Chain (chain 4663), read from Morpho through Escorpio, each with its size, plain-word risk notes and read time. Use when someone asks where to earn on idle USDG, the cheapest USDG loan against a stock token (NVDA, TSLA, AAPL, SPY, GOOGL and others), what a Morpho vault or market warning means, or how much traffic escorpio.pro gets. Read-only; never signs or moves money.
-version: 0.1.0
+description: Live USDG vault and loan rates on Robinhood Chain (chain 4663), read from Morpho through Escorpio, each with its size, plain-word risk notes and read time. Use when someone asks where to earn on idle USDG, the cheapest USDG loan against a stock token (NVDA, TSLA, AAPL, SPY, GOOGL and others), what a Morpho vault or market warning means, or how much traffic escorpio.pro gets. Also when they want to deposit, withdraw, borrow, repay, bill someone in USDG or check a payment: the prepare tools return a filled-in escorpio.pro link the wallet owner signs. Never signs or moves money itself.
+version: 0.2.0
 metadata:
   hermes:
     tags: [defi, morpho, usdg, robinhood-chain, rates, mcp]
@@ -11,8 +11,10 @@ metadata:
 # Escorpio: USDG rates on Robinhood Chain
 
 Escorpio (https://escorpio.pro) reads every USDG vault and loan market on Robinhood Chain from the public Morpho API at
-most once a minute and says what each rate hides. No key, no sign-up, no account. Everything here is **read-only**: you
-find the number, the person deposits or borrows themselves at escorpio.pro with their own wallet.
+most once a minute and says what each rate hides. No key, no sign-up, no account. **You cannot sign or send anything.**
+You read the numbers, and when the person wants to act you prepare it: the MCP prepare tools check the request with
+the site's own rules, simulate it for their wallet, and return `open_url`, escorpio.pro with the form filled in. The
+person opens it, checks it and signs in their own wallet.
 
 ## Two ways to read it
 
@@ -25,6 +27,10 @@ find the number, the person deposits or borrows themselves at escorpio.pro with 
 | `list_vaults` | Every USDG vault, best net rate first (`open_only`, `limit`) |
 | `list_markets` | Every USDG loan market, cheapest first (`collateral` as a symbol like `NVDA` or an address, `limit`) |
 | `explain_risk_notes` | What each warning means and which ones are a stop |
+| `prepare_deposit` / `prepare_withdraw` | A vault deposit or withdrawal (`vault`, `amount_usdg`, optional `wallet` to simulate) |
+| `prepare_borrow` / `prepare_repay` / `prepare_collateral_withdraw` | A loan action (`market_id`, amounts, optional `wallet`) |
+| `prepare_payment_request` | A USDG invoice link the payee opens and signs (`amount_usdg`, `memo`, `valid_days`) |
+| `check_payment` | Whether a transaction paid a request (`tx_hash`, optional `payment_link`) |
 
 **2. Plain HTTPS JSON**, if MCP is not connected. GET, no headers needed:
 
@@ -51,13 +57,18 @@ dollars** (`totalUsd`, `withdrawableUsd`, `freeToBorrowUsd`).
 4. For loans, mention `liquidationLtvPct`: borrowing against a stock token can be liquidated if its price falls.
 5. If `ageSeconds` is over 300, say the reading is stale and read again before answering.
 6. Link the page where they act: `https://escorpio.pro/earn` for vaults, `https://escorpio.pro/borrow` for loans.
+7. To act, prepare only what the person asked for. Ask for their wallet address if they want it simulated. Before
+   giving `open_url`, say what it does: the amount, the vault or market, its rate and notes, the steps to sign, the
+   simulation result, and for a loan the liquidation price. If the tool says `blocked`, say why instead of a link.
+8. A prepared link is not a payment. Never say money moved until the person signed and `check_payment` (or the
+   explorer) shows it.
 
 ## Never
 
 - Never call a vault or loan "safe", "guaranteed" or "risk-free", and never tell someone to deposit or borrow. Give the
   readings and the risks; the decision is theirs. Escorpio's own line: "Readings, not advice."
-- Never sign, send or approve anything, and never ask for a seed phrase or private key. Deposits and loans happen at
-  escorpio.pro in the person's own wallet, simulated before they sign.
+- Never sign, send or approve anything, and never ask for a seed phrase or private key. Deposits, loans and payments
+  happen at escorpio.pro in the person's own wallet, simulated before they sign.
 - Never invent a number the endpoints did not return. If an endpoint fails, say Escorpio could not be read just now.
 
 ## Example

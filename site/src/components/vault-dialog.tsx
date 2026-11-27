@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { formatUnits, type Address, type Hash } from 'viem'
+import { PresetNote } from '@/components/preset-note'
 import { RiskNotes } from '@/components/risk-notes'
 import { SwitchChain, WalletLine, WalletPicker } from '@/components/wallet-picker'
 import { vaultNotes } from '@/data/desk'
@@ -10,38 +11,37 @@ import { useWallet } from '@/lib/use-wallet'
 import { toUnits, useTx } from '@/lib/use-tx'
 import {
   USDG_DECIMALS,
-  plainError,
   readPosition,
   simulateApprove,
   simulateDeposit,
   simulateRedeemAll,
+  simulateVaultPlan,
   simulateWithdraw,
-  usdgOverride,
+  vaultBlock,
+  vaultNeedsApproval,
+  vaultWithdrawAll,
   type Position,
+  type VaultMode,
+  type VaultSim,
 } from '@/lib/vault-tx'
 
 // Deposit into or withdraw from one Morpho vault, from the user's own wallet. Order of every action:
 // 1) say in plain words what will happen, 2) simulate it on chain, 3) only then ask the wallet to sign.
 // The approval is for the exact amount, to the vault itself (Escorpio has no contract).
 
-type Mode = 'deposit' | 'withdraw'
-type Sim = { ok: true; out: bigint } | { ok: false; why: string } | undefined
+type Mode = VaultMode
+type Sim = VaultSim | undefined
 const show = (v: bigint) => usdg(Number(formatUnits(v, USDG_DECIMALS)))
 
-/** Why the typed amount cannot go ahead, or undefined when it can be simulated. */
-function blockReason(mode: Mode, amount: bigint, pos: Position | undefined) {
-  if (!pos || amount === 0n) return undefined
-  if (mode === 'deposit' && amount > pos.usdg) return `Your wallet holds ${show(pos.usdg)} USDG.`
-  if (mode === 'withdraw' && amount > pos.inVault) return `You have ${show(pos.inVault)} USDG in this vault.`
-  if (pos.eth === 0n) return 'Your wallet has no ETH on Robinhood Chain for the network fee. Add a little first.'
-  return undefined
-}
+/** Filled in from a link (lib/action-link.ts), for example one an AI agent made. "all" waits for the balance read. */
+export type VaultPreset = { mode: VaultMode; amount: string }
 
-export function VaultDialog({ vault, readAt, onClose }: { vault: Vault; readAt: number; onClose: () => void }) {
+export function VaultDialog({ vault, readAt, onClose, preset }: { vault: Vault; readAt: number; onClose: () => void; preset?: VaultPreset }) {
   const ref = useRef<HTMLDialogElement>(null)
   const { address, onRobinhood } = useWallet()
-  const [mode, setMode] = useState<Mode>('deposit')
-  const [raw, setRaw] = useState('')
+  const [mode, setMode] = useState<Mode>(preset?.mode ?? 'deposit')
+  const [raw, setRaw] = useState(preset && preset.amount !== 'all' ? preset.amount : '')
+  const [fillAll, setFillAll] = useState(preset?.amount === 'all')
   const [pos, setPos] = useState<Position>()
   const [readErr, setReadErr] = useState(false)
   const [sim, setSim] = useState<Sim>()
@@ -68,37 +68,26 @@ export function VaultDialog({ vault, readAt, onClose }: { vault: Vault; readAt: 
   useEffect(() => {
     if (ready) void refresh()
   }, [ready, refresh])
+  useEffect(() => {
+    if (fillAll && pos) (setRaw(formatUnits(pos.inVault, USDG_DECIMALS)), setFillAll(false))
+  }, [fillAll, pos])
 
   // What stops the action before anything is simulated.
-  const block = blockReason(mode, amount, pos)
-  const needApprove = mode === 'deposit' && !!pos && pos.allowance < amount
-  const all = mode === 'withdraw' && !!pos && amount === pos.inVault
+  const block = vaultBlock(mode, amount, pos)
+  const needApprove = !!pos && vaultNeedsApproval(mode, amount, pos)
+  const all = !!pos && vaultWithdrawAll(mode, amount, pos)
 
-  // Simulate as the user types (after a short pause). A deposit that still needs the approval is simulated as if
-  // the exact approval were already given, so the user sees it would pass before signing anything.
+  // Simulate as the user types (after a short pause), the same plan the MCP server simulates (lib/vault-tx.ts).
   useEffect(() => {
     setSim(undefined)
     if (!address || !pos || amount === 0n || block) return
-    const t = setTimeout(async () => {
-      try {
-        // `out` is what the user gets: vault shares for a deposit, USDG for a withdrawal. deposit() returns shares and
-        // redeem() returns USDG, but withdraw(assets) returns the shares it burns: the USDG out is the amount asked for.
-        let out: bigint
-        if (mode === 'deposit') {
-          out = (await simulateDeposit(publicClient, address, v, amount, needApprove ? usdgOverride(address, v, amount) : undefined)).result
-        } else if (all) {
-          out = (await simulateRedeemAll(publicClient, address, v, pos.shares)).result
-        } else {
-          await simulateWithdraw(publicClient, address, v, amount)
-          out = amount
-        }
-        setSim({ ok: true, out })
-      } catch (e) {
-        setSim({ ok: false, why: plainError(e) })
-      }
-    }, 400)
-    return () => clearTimeout(t)
-  }, [address, pos, amount, block, mode, needApprove, all, v])
+    let live = true
+    const t = setTimeout(() => void simulateVaultPlan(publicClient, address, v, mode, amount, pos).then((r) => live && setSim(r)), 400)
+    return () => {
+      clearTimeout(t)
+      live = false
+    }
+  }, [address, pos, amount, block, mode, v])
 
   const { busy, err, setErr, send } = useTx(refresh)
   const approve = async () => {
@@ -145,6 +134,7 @@ export function VaultDialog({ vault, readAt, onClose }: { vault: Vault; readAt: 
         <div className="mt-4">
           <RiskNotes notes={notes} />
         </div>
+        {preset && <PresetNote />}
 
         <div role="tablist" aria-label="Action" className="mt-6 grid grid-cols-2 border border-line-2">
           {(['deposit', 'withdraw'] as const).map((m) => (
@@ -286,3 +276,4 @@ export function VaultDialog({ vault, readAt, onClose }: { vault: Vault; readAt: 
     </dialog>
   )
 }
+

@@ -11,6 +11,7 @@ import {
   type StateOverride,
 } from 'viem'
 import { USDG } from '../data/morpho.ts'
+import { showUnits } from './units.ts'
 
 // Deposits into and withdrawals from Morpho Vault V2 (ERC-4626 style), signed in the user's own wallet. Escorpio has
 // no contract: the approval goes to the vault itself, for the exact amount, and the money moves wallet -> vault.
@@ -87,6 +88,50 @@ export const simulateRedeemAll = (pc: PublicClient, account: Address, vault: Add
 
 export const simulateWithdraw = (pc: PublicClient, account: Address, vault: Address, amount: bigint) =>
   pc.simulateContract({ account, address: vault, abi: vaultAbi, functionName: 'withdraw', args: [amount, account, account] })
+
+// ---- one deposit or withdrawal, planned the same way by the site dialog and the MCP server ---------------------
+
+export type VaultMode = 'deposit' | 'withdraw'
+export type VaultSim = { ok: true; out: bigint } | { ok: false; why: string }
+const showUsdg = (v: bigint) => showUnits(v, USDG_DECIMALS)
+
+/** Why this amount cannot go ahead, or undefined when it can be simulated. */
+export function vaultBlock(mode: VaultMode, amount: bigint, pos: Position | undefined) {
+  if (!pos || amount === 0n) return undefined
+  if (mode === 'deposit' && amount > pos.usdg) return `Your wallet holds ${showUsdg(pos.usdg)} USDG.`
+  if (mode === 'withdraw' && amount > pos.inVault) return `You have ${showUsdg(pos.inVault)} USDG in this vault.`
+  if (pos.eth === 0n) return 'Your wallet has no ETH on Robinhood Chain for the network fee. Add a little first.'
+  return undefined
+}
+
+export const vaultNeedsApproval = (mode: VaultMode, amount: bigint, pos: Position) => mode === 'deposit' && pos.allowance < amount
+export const vaultWithdrawAll = (mode: VaultMode, amount: bigint, pos: Position) => mode === 'withdraw' && amount === pos.inVault
+
+/** The signatures this action needs, in order. */
+export function vaultSteps(mode: VaultMode, amount: bigint, pos: Position) {
+  if (mode === 'withdraw') return [{ key: 'withdraw', label: `Withdraw ${showUsdg(amount)} USDG` }]
+  return [
+    ...(vaultNeedsApproval(mode, amount, pos) ? [{ key: 'approve', label: `Allow the vault to take exactly ${showUsdg(amount)} USDG` }] : []),
+    { key: 'deposit', label: `Deposit ${showUsdg(amount)} USDG` },
+  ]
+}
+
+/** Simulates the end result. A deposit that still needs its approval is simulated as if the exact approval were given.
+ * `out` is what the user gets: vault shares for a deposit, USDG for a withdrawal. deposit() returns shares and redeem()
+ * returns USDG, but withdraw(assets) returns the shares it burns: the USDG out is the amount asked for. */
+export async function simulateVaultPlan(pc: PublicClient, account: Address, vault: Address, mode: VaultMode, amount: bigint, pos: Position): Promise<VaultSim> {
+  try {
+    if (mode === 'deposit') {
+      const ov = vaultNeedsApproval(mode, amount, pos) ? usdgOverride(account, vault, amount) : undefined
+      return { ok: true, out: (await simulateDeposit(pc, account, vault, amount, ov)).result }
+    }
+    if (vaultWithdrawAll(mode, amount, pos)) return { ok: true, out: (await simulateRedeemAll(pc, account, vault, pos.shares)).result }
+    await simulateWithdraw(pc, account, vault, amount)
+    return { ok: true, out: amount }
+  } catch (e) {
+    return { ok: false, why: plainError(e) }
+  }
+}
 
 /** A failed simulation or wallet error in one plain sentence. */
 export function plainError(e: unknown): string {

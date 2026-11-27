@@ -44,7 +44,7 @@ export function SwitchChain() {
   const [err, setErr] = useState<string>()
   return (
     <div>
-      <p className="text-[16px] text-body">Your wallet is on another network. The vaults live on Robinhood Chain.</p>
+      <p className="text-[16px] text-body">Your wallet is on another network. Escorpio works on Robinhood Chain.</p>
       <button type="button" className="button mt-4" onClick={() => switchToRobinhood().catch((e) => setErr((e as Error).message))}>
         Switch to Robinhood Chain
       </button>

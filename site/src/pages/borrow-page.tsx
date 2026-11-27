@@ -1,4 +1,4 @@
-import { lazy, Suspense, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { DeskReadout } from '@/components/desk-readout'
 import { PageHead } from '@/components/page-head'
@@ -9,6 +9,7 @@ import { TablePager } from '@/components/table-pager'
 import { cheapest, collaterals, marketNotes, sharedSymbols } from '@/data/desk'
 import { EXPLORER, type Market } from '@/data/morpho'
 import { pct, short, usd, usdg } from '@/lib/format'
+import { readLoanLink } from '@/lib/action-link'
 import { useDesk } from '@/lib/use-desk'
 import { usePage } from '@/lib/use-page'
 
@@ -22,10 +23,21 @@ export function BorrowPage() {
   const [sel, setSel] = useState<string | undefined>()
   const [open, setOpen] = useState<Market>()
   const amount = Math.max(0, Math.min(1e12, Number(raw.replace(/,/g, '')) || 0))
+  // A link like /borrow?market=0x…&action=borrow&collateral=2&usdg=500 (lib/action-link.ts) opens that market with the
+  // form filled in.
+  const link = useMemo(() => readLoanLink(params.toString()), [params])
+  const linked = link && desk ? desk.markets.find((m) => m.id.toLowerCase() === link.market.toLowerCase()) : undefined
+  useEffect(() => {
+    if (linked) setOpen(linked)
+  }, [linked])
+  const close = () => {
+    setOpen(undefined)
+    if (link) setParams(linked ? { c: linked.collateral.address } : {}, { replace: true })
+  }
 
   const groups = useMemo(() => (desk ? collaterals(desk) : []), [desk])
   const dupes = useMemo(() => sharedSymbols(groups), [groups])
-  const wanted = params.get('c')?.toLowerCase()
+  const wanted = (params.get('c') ?? linked?.collateral.address)?.toLowerCase()
   const current = groups.find((g) => g.address.toLowerCase() === wanted) ?? groups.find((g) => g.symbol === 'NVDA') ?? groups[0]
   const best = desk && current ? cheapest(current, amount, desk.readAt) : undefined
   const selected = current?.markets.find((m) => m.id === sel)
@@ -152,9 +164,20 @@ export function BorrowPage() {
           <DeskReadout className="mt-6" />
         </>
       )}
+      {link && desk && !linked && (
+        <p role="status" className="mt-10 border-l-2 border-antares pl-3 text-[15px] text-antares-ink">
+          The link asks for market {link.market}, which is not among the USDG loan markets Escorpio reads. Nothing was opened.
+        </p>
+      )}
       {open && desk && current && (
         <Suspense fallback={null}>
-          <LoanDialog market={open} symbol={current.symbol} readAt={desk.readAt} onClose={() => setOpen(undefined)} />
+          <LoanDialog
+            market={open}
+            symbol={open.collateral.symbol}
+            readAt={desk.readAt}
+            onClose={close}
+            preset={linked && open.id === linked.id && link ? { mode: link.action, collateral: link.collateral, usdg: link.usdg } : undefined}
+          />
         </Suspense>
       )}
     </main>

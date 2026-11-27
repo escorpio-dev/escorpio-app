@@ -6,7 +6,7 @@ import { EXPLORER } from '@/data/morpho'
 // Launch day: paste the CA in TOKEN_ADDRESS and the holder threshold in whole tokens in HOLDER_MIN. HOLDER_MIN must be
 // the same threshold as HOLDER_MIN in alerts/wrangler.toml, which is in raw units (this number × 10^18).
 export const TOKEN_ADDRESS: string = ''
-export const HOLDER_MIN: number = 5_000_000
+export const HOLDER_MIN: number = 3_000_000
 
 export const TOKEN_LIVE = isAddress(TOKEN_ADDRESS) && HOLDER_MIN > 0
 
@@ -24,6 +24,6 @@ export const tokenLinks = (a: string): [string, string][] => [
 export const PERKS: [string, string, string][] = [
   ['Rate alerts on Telegram', '2, checked every 15 minutes', '10, checked every minute'],
   ['Daily digest on Telegram', 'no', 'every day, 00:05 UTC'],
-  ['New features (Receive, Pay out)', 'when they go live', 'first, as betas, when they ship'],
-  ['The desk: rates, deposits, loans, API, MCP', 'free, no sign-up', 'the same'],
+  ['Pay out: send USDG to many addresses at once', 'when it goes live', 'first, as a beta, when it ships'],
+  ['The desk: rates, deposits, loans, Receive, API, MCP', 'free, no sign-up', 'the same'],
 ]
