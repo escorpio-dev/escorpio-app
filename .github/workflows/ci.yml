@@ -22,6 +22,8 @@ jobs:
           cache: npm
           cache-dependency-path: site/package-lock.json
       - run: npm ci
+      - name: Known vulnerabilities in dependencies
+        run: npm audit --audit-level=high
       - name: Type check and build
         run: npm run build
       # Desk logic on fixtures plus a live Morpho read, then deposit and borrow against the real contracts with
@@ -40,6 +42,9 @@ jobs:
           cache-dependency-path: alerts/package-lock.json
       - run: npm ci
         working-directory: alerts
+      - name: Known vulnerabilities in dependencies
+        working-directory: alerts
+        run: npm audit --audit-level=high
       # Commands, matching, limits, stale guard, holder linking, digest, and the Worker against an in-memory SQLite.
       - name: Alert checks
         working-directory: alerts

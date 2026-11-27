@@ -168,6 +168,10 @@ site/
 No token has been launched. If one is, its contract address will be listed here, on the website and on Escorpio's X
 account at the same time. Any other address is not ours.
 
+## Changes
+
+Every release is listed in [CHANGELOG.md](CHANGELOG.md).
+
 ## Contributing
 
 `main` is protected: changes go in through a pull request. Commits follow
