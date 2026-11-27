@@ -16,10 +16,10 @@ DESK_URL = "https://escorpio.pro/api/desk"
 SITE_ORIGIN = "https://escorpio.pro"
 RPC_URL = "https://rpc.mainnet.chain.robinhood.com"
 # Holder perks stay off while these are empty. Launch day: the $ESCORPIO address, and the threshold in raw token
-# units (18 decimals). Owner set 5,000,000 tokens (2026-11-24), same as HOLDER_MIN in site/src/data/token.ts. Stays off
+# units (18 decimals). Owner set 3,000,000 tokens (2026-11-27), same as HOLDER_MIN in site/src/data/token.ts. Stays off
 # while TOKEN_ADDRESS is empty. Announce the threshold before changing it.
 TOKEN_ADDRESS = ""
-HOLDER_MIN = "5000000000000000000000000"
+HOLDER_MIN = "3000000000000000000000000"
 
 [triggers]
 crons = ["* * * * *"]
