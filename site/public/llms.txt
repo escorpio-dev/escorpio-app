@@ -25,6 +25,11 @@ Quote `readAt` with any rate. Never call a rate safe or guaranteed. To act, use 
 escorpio.pro with the form filled in, where the wallet owner checks the plan and signs. Say what the link does before
 giving it, and never say money moved until `check_payment` or the explorer shows it.
 
+With `wallet`, a prepare tool reads that wallet and simulates the plan as an eth_call (no transaction, nothing signed).
+Any address that holds USDG works, so checking the steps and the exact-amount approval needs no funds of your own.
+Every API answer carries `checkedOnChain`: vault sizes read from each vault contract on Robinhood Chain and compared
+with Morpho's numbers.
+
 Hermes Agent: add it under `mcp_servers` in `~/.hermes/config.yaml`, then `/reload-mcp`:
 
 ```yaml
