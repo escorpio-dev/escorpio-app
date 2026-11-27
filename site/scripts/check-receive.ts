@@ -65,9 +65,14 @@ assert.equal(refFromInput(data), req.ref, 'ref not read back from calldata')
 await assert.rejects(simulatePay(pc, payer, req), 'payment passed with no USDG')
 
 // 6. Receipt from a real past USDG transfer by a plain wallet (no ref): the transfer is found and matched by amount.
+// Small windows walking back from the head: a busy USDG can pass the RPC's 10,000-log cap in a few thousand blocks.
+const transfer = parseAbiItem('event Transfer(address indexed from, address indexed to, uint256 value)')
 const head = await pc.getBlockNumber()
-const logs = await pc.getLogs({ address: USDG as Address, event: parseAbiItem('event Transfer(address indexed from, address indexed to, uint256 value)'), fromBlock: head - 5_000n, toBlock: head })
-const log = logs.reverse().find((l) => l.args.value! > 0n)
+let log
+for (let to = head, i = 0; !log && i < 20; i++, to -= 500n) {
+  const logs = await pc.getLogs({ address: USDG as Address, event: transfer, fromBlock: to - 499n, toBlock: to })
+  log = logs.reverse().find((l) => l.args.value! > 0n)
+}
 assert.ok(log, 'no recent USDG transfer to read')
 const rc = await readReceipt(pc, log.transactionHash!)
 assert.ok(rc && rc.ok, 'receipt not read')
