@@ -6,15 +6,24 @@
 
 ## MCP server
 
-Add `https://escorpio.pro/mcp` as a remote MCP server (Streamable HTTP, no key, no login). Read-only tools:
+Add `https://escorpio.pro/mcp` as a remote MCP server (Streamable HTTP, no key, no login). Tools read or prepare;
+none can sign, send or approve:
 
 - `get_best_rates`: best open USDG vault, cheapest loan per collateral, widest rate gap
 - `list_vaults`: USDG vaults, best net rate first (`open_only`, `limit`)
 - `list_markets`: USDG loan markets, cheapest first (`collateral`, `limit`)
 - `explain_risk_notes`: what every risk note means
+- `prepare_deposit` (vault, amount_usdg, wallet?): A deposit into one vault, checked and (with wallet) simulated. Returns open_url: escorpio.pro with the form filled in.
+- `prepare_withdraw` (vault, amount_usdg or "all", wallet?): A withdrawal back to the wallet, checked and simulated.
+- `prepare_borrow` (market_id, collateral_amount?, borrow_usdg?, wallet?): Collateral in and/or a USDG loan. Refused past 90% of the liquidation line. With wallet: loan after, liquidation price, steps, simulation.
+- `prepare_repay` (market_id, amount_usdg or "all", wallet?): A repayment, checked and simulated.
+- `prepare_collateral_withdraw` (market_id, collateral_amount, wallet?): Collateral back to the wallet, refused if the loan would pass the 90% limit.
+- `prepare_payment_request` (amount_usdg, memo?, valid_days?): A USDG invoice: a link to /receive that the payee opens and signs.
+- `check_payment` (tx_hash, payment_link?): A payment read from the chain, and whether it paid that request.
 
-Quote `readAt` with any rate. Never call a rate safe or guaranteed. To act, send people to the Earn or Borrow page,
-where they sign with their own wallet.
+Quote `readAt` with any rate. Never call a rate safe or guaranteed. To act, use a prepare tool: it returns `open_url`,
+escorpio.pro with the form filled in, where the wallet owner checks the plan and signs. Say what the link does before
+giving it, and never say money moved until `check_payment` or the explorer shows it.
 
 Hermes Agent: add it under `mcp_servers` in `~/.hermes/config.yaml`, then `/reload-mcp`:
 

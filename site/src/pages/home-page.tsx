@@ -52,14 +52,19 @@ function Top() {
       </div>
       <div className="width home-top-inner">
         <div className="home-top-copy">
-          <p className="k-kicker">Compare · then earn or borrow</p>
+          <p className="k-kicker">Your agent prepares · you sign</p>
           <h1>
             The USDG desk
             <br />
-            <span className="k-accent">for Robinhood Chain</span>
+            <span className="k-accent">
+              for you and
+              <br />
+              your agent
+            </span>
           </h1>
           <p className="k-lede">
-            Compare every vault and loan rate, see what each one hides, then earn or borrow right here from your own wallet.
+            Every USDG vault and loan rate on Robinhood Chain and what each one hides. Ask here or ask your AI agent: it can
+            prepare the deposit, the loan or the invoice, and you sign it from your own wallet.
           </p>
           <div className="k-hero-cta">
             <Link to="/earn" className="button">
@@ -353,14 +358,14 @@ function Features() {
 }
 
 // The same desk for people and for AI agents. People use the pages; agents plug in the MCP server (functions/mcp.ts)
-// or the API and get the same readings. Agents read, they never sign: the exchange below is built from this minute's
-// reading, exactly what the get_best_rates tool returns, never typed in.
+// or the API and get the same readings, and the prepare_* tools (server/agent.ts) hand back a filled-in link the person
+// signs. Agents never sign. The exchange below is built from this minute's reading, never typed in.
 const MCP_URL = 'https://escorpio.pro/mcp'
 const AGENT_TOOLS = [
   ['get_best_rates', 'best open vault, cheapest loan per token'],
-  ['list_vaults', 'every USDG vault with its risk notes'],
-  ['list_markets', 'every loan market, filter by token'],
-  ['explain_risk_notes', 'what each warning means'],
+  ['list_vaults · list_markets', 'every vault and loan with its risk notes'],
+  ['prepare_deposit · prepare_borrow', 'a filled-in deposit or loan, simulated for your wallet'],
+  ['prepare_payment_request · check_payment', 'an invoice link, then proof it was paid'],
 ]
 
 // Agents and directories Escorpio plugs into, with their official marks (components/agent-marks.tsx).
@@ -425,8 +430,9 @@ function Agents() {
           and your agent
         </h2>
         <p className="home-agents-lede">
-          Everything Escorpio reads is open to people and to AI agents. Ask on the page or ask your agent: the rates are the
-          same, read the same minute. Whoever asks, the money only moves when you sign.
+          Your agent reads the same rates you see, read the same minute. Ask it to park USDG, borrow against a stock token or
+          bill a client, and it hands you the deposit, loan or invoice already filled in and simulated. The money only moves
+          when you sign it in your own wallet.
         </p>
         <WorksWith />
         <div className="home-agents-cols">
@@ -473,8 +479,8 @@ function Agents() {
               <code>hermes skills install escorpio-dev/escorpio-app/skills/escorpio</code>
             </div>
             <p className="home-agents-small">
-              Agents read, they do not sign. Your agent finds the rate and the market; the deposit or loan still happens here,
-              in your wallet. Setup for each agent in the <Link to="/docs">docs</Link>, also as an <a href="/openapi.json">OpenAPI file</a> and <a href="/llms.txt">llms.txt</a>.
+              Agents prepare, they do not sign. Your agent picks the vault or market, checks your wallet and simulates the
+              plan, then gives you a link to this site with the form filled in. Only you can sign it. Setup for each agent in the <Link to="/docs">docs</Link>, also as an <a href="/openapi.json">OpenAPI file</a> and <a href="/llms.txt">llms.txt</a>.
             </p>
           </article>
         </div>
@@ -488,6 +494,19 @@ function Agents() {
                 {best.name}, a {usd(best.totalUsd)} vault, pays {pct(best.netApy)} a year after fees, read {ago(desk.readAt, now)}. At that rate 10,000 USDG
                 would earn about {usdg(yearly(10_000, best.netApy))} USDG in a year, if the rate held. Deposit from your own
                 wallet at escorpio.pro/earn.
+              </>
+            ) : (
+              'Reading Morpho…'
+            )}
+          </p>
+          <p className="chat-q">Put 1,000 USDG in it.</p>
+          <p className="chat-tool">prepare_deposit</p>
+          <p className="chat-a">
+            {best ? (
+              <>
+                Filled in for you: 1,000 USDG into {best.name}. Open the link, check the amount, and sign in your wallet: first
+                an approval for exactly 1,000 USDG if this vault has none from you yet, then the deposit. The page simulates
+                both before you sign.
               </>
             ) : (
               'Reading Morpho…'

@@ -1,8 +1,10 @@
 # Escorpio
 
-Escorpio is a USDG money desk on Robinhood Chain (chain id 4663). It makes signed USDG payment links, shows where
-idle USDG earns the most in Morpho vaults and where USDG is cheapest to borrow against stock tokens, then lets you
-pay, deposit, withdraw, borrow and repay from your own wallet. Every step is simulated on chain before you sign, and approvals are for the exact amount.
+Escorpio is a USDG money desk on Robinhood Chain (chain id 4663), for people and their AI agents. It shows where idle
+USDG earns the most in Morpho vaults and where USDG is cheapest to borrow against stock tokens, makes signed USDG
+payment links, and lets you pay, deposit, withdraw, borrow and repay from your own wallet. Your AI agent can prepare
+any of these over MCP; you sign. Every step is simulated on chain before you sign, and approvals are for the exact
+amount.
 
 [Website](https://escorpio.pro) · [Earn](https://escorpio.pro/earn) · [Borrow](https://escorpio.pro/borrow) · [Receive](https://escorpio.pro/receive) · [Method](https://escorpio.pro/method)
 
@@ -78,8 +80,11 @@ A short guide for AI agents is at [`/llms.txt`](https://escorpio.pro/llms.txt), 
 
 ## MCP server
 
-AI agents can use the same readings as tools. Add `https://escorpio.pro/mcp` as a remote MCP server (Streamable HTTP,
-no key). Read-only: agents can read rates, they cannot sign or move anything.
+AI agents can use the same readings as tools, and prepare actions for the wallet owner to sign. Add
+`https://escorpio.pro/mcp` as a remote MCP server (Streamable HTTP, no key). No tool can sign, send or approve: a prepare
+tool checks the request with the same rules as the site, simulates it on chain when given a wallet address (the address
+is not stored), and returns `open_url`, a link to escorpio.pro with the form filled in. The page reads the wallet
+again, simulates again and waits for the owner's signature.
 
 | Tool | What |
 |---|---|
@@ -87,12 +92,20 @@ no key). Read-only: agents can read rates, they cannot sign or move anything.
 | `list_vaults` | USDG vaults, best net rate first (`open_only`, `limit`) |
 | `list_markets` | USDG loan markets, cheapest first (`collateral`, `limit`) |
 | `explain_risk_notes` | What every risk note means |
+| `prepare_deposit` | A deposit into one vault, checked and (with wallet) simulated. Returns open_url: escorpio.pro with the form filled in. (`vault, amount_usdg, wallet?`) |
+| `prepare_withdraw` | A withdrawal back to the wallet, checked and simulated. (`vault, amount_usdg or "all", wallet?`) |
+| `prepare_borrow` | Collateral in and/or a USDG loan. Refused past 90% of the liquidation line. With wallet: loan after, liquidation price, steps, simulation. (`market_id, collateral_amount?, borrow_usdg?, wallet?`) |
+| `prepare_repay` | A repayment, checked and simulated. (`market_id, amount_usdg or "all", wallet?`) |
+| `prepare_collateral_withdraw` | Collateral back to the wallet, refused if the loan would pass the 90% limit. (`market_id, collateral_amount, wallet?`) |
+| `prepare_payment_request` | A USDG invoice: a link to /receive that the payee opens and signs. (`amount_usdg, memo?, valid_days?`) |
+| `check_payment` | A payment read from the chain, and whether it paid that request. (`tx_hash, payment_link?`) |
 
 ```bash
 claude mcp add --transport http escorpio https://escorpio.pro/mcp
 ```
 
-Code: `site/functions/mcp.ts` and `site/server/mcp.ts`, checked by `npm run check:mcp`.
+Code: `site/functions/mcp.ts`, `site/server/mcp.ts` and `site/server/agent.ts`, checked by `npm run check:mcp` and
+`npm run check:agent`. Link format: `site/src/lib/action-link.ts`.
 
 ## Run it locally
 
@@ -117,6 +130,7 @@ npm run check           # desk logic on hand-made rows, then a live read of the 
 npm run check:mcp       # MCP handshake, tool list, every tool on a live read, error paths
 npm run check:deposit   # deposit 100 USDG into every open vault; refused when the approval is 1 unit short; withdraw all
 npm run check:borrow    # per open market: borrow 100 USDG, refused past the limit, repay all, take collateral back, put collateral in
+npm run check:agent     # every agent tool on live data: links, refusals, an empty wallet blocked, a real holder's deposit simulated, loan limits, payment checks
 npm run check:receive   # sign a request with a throwaway key, link round trip, tampered links refused, expiry, pay with the reference, read a real receipt
 ```
 

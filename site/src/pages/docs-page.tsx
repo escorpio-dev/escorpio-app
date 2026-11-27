@@ -5,7 +5,7 @@ import { PageHead } from '@/components/page-head'
 
 // /docs: how to plug Escorpio into an agent (MCP server, agent skill) or call the JSON API. Each section has an id the
 // "Works with" logos on home link to (#claude, #chatgpt, #cursor, #hermes, #skills). Client menus change over time, so
-// every client section leads with what does not change: the URL, no key, read-only.
+// every client section leads with what does not change: the URL, no key, and that no tool can sign.
 const MCP_URL = 'https://escorpio.pro/mcp'
 const SKILL = 'npx skills add escorpio-dev/escorpio-app'
 
@@ -14,6 +14,13 @@ const TOOLS: [string, string, string][] = [
   ['list_vaults', 'open_only, limit', 'Every USDG vault, best net rate first. open_only keeps the ones Escorpio would headline.'],
   ['list_markets', 'collateral, limit', 'Every USDG loan market, cheapest first. collateral takes a symbol (NVDA) or an address.'],
   ['explain_risk_notes', 'none', 'What every risk note means, and which ones are a stop.'],
+  ['prepare_deposit', 'vault, amount_usdg, wallet?', 'A deposit into one vault, checked and (with wallet) simulated. Returns open_url: escorpio.pro with the form filled in.'],
+  ['prepare_withdraw', 'vault, amount_usdg or "all", wallet?', 'A withdrawal back to the wallet, checked and simulated.'],
+  ['prepare_borrow', 'market_id, collateral_amount?, borrow_usdg?, wallet?', 'Collateral in and/or a USDG loan. Refused past 90% of the liquidation line. With wallet: loan after, liquidation price, steps, simulation.'],
+  ['prepare_repay', 'market_id, amount_usdg or "all", wallet?', 'A repayment, checked and simulated.'],
+  ['prepare_collateral_withdraw', 'market_id, collateral_amount, wallet?', 'Collateral back to the wallet, refused if the loan would pass the 90% limit.'],
+  ['prepare_payment_request', 'amount_usdg, memo?, valid_days?', 'A USDG invoice: a link to /receive that the payee opens and signs.'],
+  ['check_payment', 'tx_hash, payment_link?', 'A payment read from the chain, and whether it paid that request.'],
 ]
 
 const API: [string, string][] = [
@@ -35,8 +42,9 @@ export function DocsPage() {
   return (
     <main className="wrap pb-28 pt-[130px] lg:pt-[180px]">
       <PageHead kicker="Docs" title="Plug Escorpio into your agent" bg="bg-docs">
-        One read-only MCP server, one agent skill and a public JSON API, all reading the same live desk. No key, no
-        sign-up. Agents read; the deposit or loan still happens on escorpio.pro, in the person's own wallet.
+        One MCP server, one agent skill and a public JSON API, all reading the same live desk. No key, no sign-up. Agents
+        read and prepare: a deposit, loan or invoice comes back as a link to escorpio.pro with the form filled in, and only
+        the wallet owner can sign it.
       </PageHead>
 
       <nav className="k-docs-toc" aria-label="On this page">
@@ -60,7 +68,7 @@ export function DocsPage() {
 
       <div className="mt-10 grid grid-cols-[minmax(0,1fr)] gap-x-16 lg:grid-cols-[14rem_minmax(0,1fr)]">
         <Block id="mcp" title="MCP server">
-          <p>Remote MCP server, Streamable HTTP, no authentication, read-only tools:</p>
+          <p>Remote MCP server, Streamable HTTP, no authentication. Tools read or prepare; none can sign, send or approve:</p>
           <Code text={MCP_URL} />
           <table className="k-docs-table mt-6">
             <thead>
@@ -83,7 +91,10 @@ export function DocsPage() {
             </tbody>
           </table>
           <p className="mt-4 text-sm text-muted">
-            Every answer carries <code>readAt</code>. Rates are percent per year, money is US dollars.
+            Every answer carries <code>readAt</code>. Rates are percent per year, money is US dollars. A prepare tool given
+            a <code>wallet</code> reads that wallet and simulates the whole plan on chain (no transaction); the address is
+            not stored. Its <code>open_url</code> opens the page filled in, which reads the wallet again and simulates again
+            before the owner signs.
           </p>
         </Block>
 
@@ -176,6 +187,8 @@ export function DocsPage() {
             <li>A note marked stop (deposits closed, withdrawals stuck) means do not send anyone there.</li>
             <li>For loans, mention the liquidation LTV: a stock token can fall and the loan can be liquidated.</li>
             <li>Never call anything safe or guaranteed, and never tell someone to deposit or borrow. Readings, not advice.</li>
+            <li>Prepare only what the person asked for. Before you give an <code>open_url</code>, say what it does: the amount, the vault or market, its rate and risk notes, and for a loan the liquidation price.</li>
+            <li>A prepared link is not a payment. Never say money moved until the person signed and <code>check_payment</code> or the explorer shows it.</li>
             <li>Never sign, send or approve anything, and never ask for a seed phrase or private key.</li>
           </ul>
         </Block>
