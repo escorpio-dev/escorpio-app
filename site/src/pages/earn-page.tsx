@@ -1,4 +1,5 @@
-import { lazy, Suspense, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router'
 import { DeskReadout } from '@/components/desk-readout'
 import { PageHead } from '@/components/page-head'
 import { RiskNotes } from '@/components/risk-notes'
@@ -7,6 +8,7 @@ import { TablePager } from '@/components/table-pager'
 import { biggestOpenVault, headlineVaults, vaultNotes } from '@/data/desk'
 import type { Vault } from '@/data/morpho'
 import { age, pct, usd } from '@/lib/format'
+import { readVaultLink } from '@/lib/action-link'
 import { useDesk } from '@/lib/use-desk'
 import { usePage } from '@/lib/use-page'
 
@@ -27,6 +29,17 @@ export function EarnPage() {
   const [sort, setSort] = useState<Sort>('rate')
   const [all, setAll] = useState(false)
   const [pick, setPick] = useState<Vault>()
+  const [params, setParams] = useSearchParams()
+  // A link like /earn?vault=0x…&action=deposit&amount=100 (lib/action-link.ts) opens that vault with the form filled in.
+  const link = useMemo(() => readVaultLink(params.toString()), [params])
+  const linked = link && desk ? desk.vaults.find((v) => v.address.toLowerCase() === link.vault.toLowerCase()) : undefined
+  useEffect(() => {
+    if (linked) setPick(linked)
+  }, [linked])
+  const close = () => {
+    setPick(undefined)
+    if (link) setParams({}, { replace: true })
+  }
 
   const rows = useMemo(() => {
     if (!desk) return []
@@ -163,10 +176,15 @@ export function EarnPage() {
         </>
       )}
 
+      {link && desk && !linked && (
+        <p role="status" className="mt-10 border-l-2 border-antares pl-3 text-[15px] text-antares-ink">
+          The link asks for vault {link.vault}, which is not among the USDG vaults Escorpio reads. Nothing was opened.
+        </p>
+      )}
       <ReadGuide />
       {pick && desk && (
         <Suspense fallback={null}>
-          <VaultDialog vault={pick} readAt={desk.readAt} onClose={() => setPick(undefined)} />
+          <VaultDialog vault={pick} readAt={desk.readAt} onClose={close} preset={linked && pick.address === linked.address && link ? { mode: link.action, amount: link.amount } : undefined} />
         </Suspense>
       )}
     </main>

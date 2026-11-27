@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
-import { type Address, type Hash, type Hex } from 'viem'
+import { formatUnits, type Address, type Hash, type Hex } from 'viem'
+import { PresetNote } from '@/components/preset-note'
 import { RiskNotes } from '@/components/risk-notes'
 import { SwitchChain, WalletLine, WalletPicker } from '@/components/wallet-picker'
 import { marketNotes } from '@/data/desk'
@@ -7,43 +8,53 @@ import { MORPHO_BLUE, type Market } from '@/data/morpho'
 import { publicClient, shortAddress, txUrl } from '@/lib/chain'
 import { pct, usd } from '@/lib/format'
 import {
-  borrowLimit,
+  LOAN_CAP,
+  LOAN_WARN,
   collateralValue,
   liquidationPrice,
-  positionOverride,
+  loanAfter,
+  loanBlock,
+  loanCapRoom,
+  loanPlan,
   pricePerToken,
   readLoan,
   simulateApproveToken,
   simulateBorrow,
+  simulateLoanPlan,
   simulateRepay,
   simulateSupplyCollateral,
   simulateWithdrawCollateral,
   repayMax,
   type Loan,
+  type LoanMode,
+  type LoanSim,
+  type LoanStep,
 } from '@/lib/loan-tx'
 import { showUnits, toUnits, useTx } from '@/lib/use-tx'
 import { useWallet } from '@/lib/use-wallet'
-import { USDG_DECIMALS, plainError, usdgOverride } from '@/lib/vault-tx'
+import { USDG_DECIMALS } from '@/lib/vault-tx'
 
 // Borrow USDG against a token on one Morpho market, from the user's own wallet. Every step says what it does in plain
 // words, is simulated on chain, and only then goes to the wallet. Escorpio stops at 90% of the market's liquidation
 // line: a loan right at the line is liquidated by the next small price move.
 
-type Mode = 'borrow' | 'repay' | 'collateral'
-type Sim = { ok: true; note: string } | { ok: false; why: string } | undefined
-const CAP = 90n // percent of the liquidation line Escorpio lets a loan reach
-const WARN = 80n
+type Mode = LoanMode
+type Sim = LoanSim | undefined
+const CAP = LOAN_CAP
+const WARN = LOAN_WARN
 const BLUE = MORPHO_BLUE as Address
 const U = (v: bigint) => showUnits(v, USDG_DECIMALS)
-// Interest keeps building while the user signs, so a full repayment needs a little more allowance than today's debt.
-const withMargin = (debt: bigint) => debt + debt / 2000n + 10n
 
-export function LoanDialog({ market, symbol, readAt, onClose }: { market: Market; symbol: string; readAt: number; onClose: () => void }) {
+/** Filled in from a link (lib/action-link.ts). usdg "all" on repay waits for the loan read. */
+export type LoanPreset = { mode: LoanMode; collateral?: string; usdg?: string }
+
+export function LoanDialog({ market, symbol, readAt, onClose, preset }: { market: Market; symbol: string; readAt: number; onClose: () => void; preset?: LoanPreset }) {
   const ref = useRef<HTMLDialogElement>(null)
   const { address, onRobinhood } = useWallet()
-  const [mode, setMode] = useState<Mode>('borrow')
-  const [rawColl, setRawColl] = useState('')
-  const [rawUsdg, setRawUsdg] = useState('')
+  const [mode, setMode] = useState<Mode>(preset?.mode ?? 'borrow')
+  const [rawColl, setRawColl] = useState(preset?.collateral ?? '')
+  const [rawUsdg, setRawUsdg] = useState(preset?.usdg && preset.usdg !== 'all' ? preset.usdg : '')
+  const [fillAll, setFillAll] = useState(preset?.usdg === 'all')
   const [loan, setLoan] = useState<Loan>()
   const [readErr, setReadErr] = useState(false)
   const [sim, setSim] = useState<Sim>()
@@ -68,6 +79,9 @@ export function LoanDialog({ market, symbol, readAt, onClose }: { market: Market
   useEffect(() => {
     if (ready) void refresh()
   }, [ready, refresh])
+  useEffect(() => {
+    if (fillAll && loan) (setRawUsdg(formatUnits(repayMax(loan), USDG_DECIMALS)), setFillAll(false))
+  }, [fillAll, loan])
   const { busy, err, setErr, send } = useTx(refresh)
 
   const dec = loan?.collDecimals ?? 18
@@ -75,102 +89,41 @@ export function LoanDialog({ market, symbol, readAt, onClose }: { market: Market
   const usdgAmt = toUnits(rawUsdg, USDG_DECIMALS)
   const C = (v: bigint) => showUnits(v, dec, 2)
 
-  // The loan as it would be after this action.
-  const after = (() => {
-    if (!loan) return undefined
-    const collateral = mode === 'borrow' ? loan.collateral + coll : mode === 'collateral' ? loan.collateral - (coll > loan.collateral ? loan.collateral : coll) : loan.collateral
-    const debt = mode === 'borrow' ? loan.debt + usdgAmt : mode === 'repay' ? (usdgAmt >= loan.debt ? 0n : loan.debt - usdgAmt) : loan.debt
-    const limit = borrowLimit(collateral, loan.price, loan.params.lltv)
-    return { collateral, debt, limit, used: limit ? Number((debt * 10_000n) / limit) / 100 : debt ? Infinity : 0 }
-  })()
-  const capRoom = loan && after ? (borrowLimit(after.collateral, loan.price, loan.params.lltv) * CAP) / 100n - loan.debt : 0n
-
-  // What stops the action before anything is simulated.
-  const block = (() => {
-    if (!loan || !after) return undefined
-    if (mode === 'borrow') {
-      if (coll === 0n && usdgAmt === 0n) return undefined
-      if (coll > loan.walletColl) return `Your wallet holds ${C(loan.walletColl)} ${loan.collSymbol}.`
-      if (after.debt > (after.limit * CAP) / 100n) return `That is past ${CAP}% of the liquidation line. With this collateral you can borrow up to ${U(capRoom > 0n ? capRoom : 0n)} USDG here.`
-    }
-    if (mode === 'repay') {
-      if (usdgAmt === 0n) return undefined
-      if (loan.debt === 0n) return 'You owe nothing in this market.'
-      const need = usdgAmt >= loan.debt ? loan.debt : usdgAmt
-      if (need > loan.walletUsdg) return `Your wallet holds ${U(loan.walletUsdg)} USDG.`
-    }
-    if (mode === 'collateral') {
-      if (coll === 0n) return undefined
-      if (coll > loan.collateral) return `You have ${C(loan.collateral)} ${loan.collSymbol} in this market.`
-      if (after.debt > (after.limit * CAP) / 100n) return `Taking that much back would put the loan past ${CAP}% of the liquidation line. Repay first.`
-    }
-    if (loan.eth === 0n) return 'Your wallet has no ETH on Robinhood Chain for the network fee. Add a little first.'
-    return undefined
-  })()
-
-  // Steps still to sign, in order.
-  const repayAll = mode === 'repay' && !!loan && loan.debt > 0n && usdgAmt >= loan.debt
-  const repayPull = loan ? (repayAll ? withMargin(loan.debt) : usdgAmt) : 0n
-  const steps: { key: string; label: string; run: () => Promise<Hash | undefined>; text: string }[] = []
-  if (loan && address && !block) {
+  // The loan after this action, what blocks it, the signatures it needs and its simulation: the same plan the MCP
+  // server uses (lib/loan-tx.ts).
+  const after = loan ? loanAfter(loan, mode, coll, usdgAmt) : undefined
+  const capRoom = loan && after ? loanCapRoom(loan, after) : 0n
+  const block = loan ? loanBlock(loan, mode, coll, usdgAmt) : undefined
+  const plan = loan ? loanPlan(loan, mode, coll, usdgAmt) : undefined
+  const repayAll = !!plan?.repayAll
+  const steps: (LoanStep & { run: () => Promise<Hash | undefined> })[] = []
+  if (loan && address && plan) {
     const p = loan.params
-    if (mode === 'borrow') {
-      if (coll > 0n && loan.collAllowance < coll)
-        steps.push({ key: 'approve', label: `Allow ${C(coll)} ${loan.collSymbol}`, text: '', run: () => send('Allowing', () => simulateApproveToken(publicClient, address, p.collateralToken, coll)) })
-      if (coll > 0n)
-        steps.push({ key: 'supply', label: `Put in ${C(coll)} ${loan.collSymbol}`, text: `Put ${C(coll)} ${loan.collSymbol} in as collateral.`, run: () => send('Putting in collateral', () => simulateSupplyCollateral(publicClient, address, p, coll)) })
-      if (usdgAmt > 0n)
-        steps.push({ key: 'borrow', label: `Borrow ${U(usdgAmt)} USDG`, text: `Borrowed ${U(usdgAmt)} USDG to your wallet.`, run: () => send('Borrowing', () => simulateBorrow(publicClient, address, p, usdgAmt)) })
+    const runs: Record<LoanStep['key'], () => Promise<Hash | undefined>> = {
+      approve: () =>
+        mode === 'repay'
+          ? send('Allowing', () => simulateApproveToken(publicClient, address, p.loanToken, plan.repayPull))
+          : send('Allowing', () => simulateApproveToken(publicClient, address, p.collateralToken, coll)),
+      supply: () => send('Putting in collateral', () => simulateSupplyCollateral(publicClient, address, p, coll)),
+      borrow: () => send('Borrowing', () => simulateBorrow(publicClient, address, p, usdgAmt)),
+      repay: () => send('Repaying', () => simulateRepay(publicClient, address, p, plan.repayAll ? { shares: loan.borrowShares } : { assets: usdgAmt })),
+      withdraw: () => send('Taking collateral back', () => simulateWithdrawCollateral(publicClient, address, p, coll)),
     }
-    if (mode === 'repay' && usdgAmt > 0n) {
-      if (loan.usdgAllowance < repayPull)
-        steps.push({ key: 'approve', label: `Allow ${U(repayPull)} USDG`, text: '', run: () => send('Allowing', () => simulateApproveToken(publicClient, address, p.loanToken, repayPull)) })
-      steps.push({
-        key: 'repay',
-        label: repayAll ? 'Repay all' : `Repay ${U(usdgAmt)} USDG`,
-        text: repayAll ? 'Loan repaid in full.' : `Repaid ${U(usdgAmt)} USDG.`,
-        run: () => send('Repaying', () => simulateRepay(publicClient, address, p, repayAll ? { shares: loan.borrowShares } : { assets: usdgAmt })),
-      })
-    }
-    if (mode === 'collateral' && coll > 0n)
-      steps.push({ key: 'withdraw', label: `Take back ${C(coll)} ${loan.collSymbol}`, text: `${C(coll)} ${loan.collSymbol} back in your wallet.`, run: () => send('Taking collateral back', () => simulateWithdrawCollateral(publicClient, address, p, coll)) })
+    for (const st of plan.steps) steps.push({ ...st, run: runs[st.key] })
   }
   const next = steps[0]
   const stepKeys = steps.map((s) => s.key).join(',')
 
-  // Simulate the end result as the user types. Before the collateral is in, the borrow is simulated as if it were
-  // (Morpho Blue position override); before the USDG approval exists, the repay is simulated as if it did.
   useEffect(() => {
     setSim(undefined)
     if (!address || !loan || !stepKeys || block) return
-    const t = setTimeout(async () => {
-      const p = loan.params
-      try {
-        if (mode === 'borrow') {
-          if (usdgAmt > 0n) {
-            await simulateBorrow(publicClient, address, p, usdgAmt, coll > 0n ? positionOverride(id, address, loan.collateral + coll, loan.borrowShares) : undefined)
-            setSim({ ok: true, note: `the borrow of ${U(usdgAmt)} USDG would go through${coll > 0n ? ' once the collateral is in' : ''}.` })
-          } else if (loan.collAllowance >= coll) {
-            await simulateSupplyCollateral(publicClient, address, p, coll)
-            setSim({ ok: true, note: `putting in ${C(coll)} ${loan.collSymbol} would go through.` })
-          } else {
-            await simulateApproveToken(publicClient, address, p.collateralToken, coll)
-            setSim({ ok: true, note: `the approval would go through; the deposit itself is simulated again after it.` })
-          }
-        } else if (mode === 'repay') {
-          const ov = loan.usdgAllowance < repayPull ? usdgOverride(address, BLUE, repayPull) : undefined
-          const { result } = await simulateRepay(publicClient, address, p, repayAll ? { shares: loan.borrowShares } : { assets: usdgAmt }, ov)
-          setSim({ ok: true, note: `${U(result[0])} USDG of debt would be repaid.` })
-        } else {
-          await simulateWithdrawCollateral(publicClient, address, p, coll)
-          setSim({ ok: true, note: `${C(coll)} ${loan.collSymbol} would come back to your wallet.` })
-        }
-      } catch (e) {
-        setSim({ ok: false, why: plainError(e) })
-      }
-    }, 400)
-    return () => clearTimeout(t)
-  }, [address, loan, stepKeys, block, mode, coll, usdgAmt, repayAll, repayPull, id])
+    let live = true
+    const t = setTimeout(() => void simulateLoanPlan(publicClient, address, id, loan, mode, coll, usdgAmt).then((r) => live && setSim(r)), 400)
+    return () => {
+      clearTimeout(t)
+      live = false
+    }
+  }, [address, loan, stepKeys, block, mode, coll, usdgAmt, id])
 
   async function runNext() {
     if (!next) return
@@ -215,6 +168,7 @@ export function LoanDialog({ market, symbol, readAt, onClose }: { market: Market
         <div className="mt-4">
           <RiskNotes notes={notes} />
         </div>
+        {preset && <PresetNote />}
 
         <div role="tablist" aria-label="Action" className="mt-6 grid grid-cols-3 border border-line-2">
           {(
@@ -276,10 +230,10 @@ export function LoanDialog({ market, symbol, readAt, onClose }: { market: Market
               {(mode === 'borrow' || mode === 'repay') && (
                 <Amount
                   id="loan-usdg"
-                  label={mode === 'borrow' ? `USDG to borrow${loan ? ` (up to ${U(capRoom > 0n ? capRoom : 0n)} at ${CAP}% of the line)` : ''}` : 'USDG to repay'}
+                  label={mode === 'borrow' ? `USDG to borrow${loan ? ` (up to ${U(capRoom)} at ${CAP}% of the line)` : ''}` : 'USDG to repay'}
                   value={rawUsdg}
                   onChange={(x) => (setRawUsdg(x), setDone(undefined))}
-                  max={loan ? (mode === 'borrow' ? (capRoom > 0n ? capRoom : 0n) : repayMax(loan)) : undefined}
+                  max={loan ? (mode === 'borrow' ? capRoom : repayMax(loan)) : undefined}
                   decimals={USDG_DECIMALS}
                 />
               )}

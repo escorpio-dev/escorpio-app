@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { PageHead } from '@/components/page-head'
+import { PresetNote } from '@/components/preset-note'
 import { SwitchChain, WalletLine, WalletPicker } from '@/components/wallet-picker'
+import { readReceiveLink } from '@/lib/action-link'
 import { shortAddress } from '@/lib/chain'
 import { MEMO_MAX, newRef, toQuery, typedData, type Request } from '@/lib/receive'
 import { showUnits, toUnits } from '@/lib/use-tx'
@@ -19,9 +21,11 @@ const VALID: [string, number][] = [
 
 export function ReceivePage() {
   const { address, onRobinhood } = useWallet()
-  const [raw, setRaw] = useState('')
-  const [memo, setMemo] = useState('')
-  const [days, setDays] = useState(30)
+  // /receive?amount=100&memo=…&days=30 (lib/action-link.ts, for example from an AI agent) fills the form in.
+  const [preset] = useState(() => readReceiveLink(typeof location === 'undefined' ? '' : location.search))
+  const [raw, setRaw] = useState(preset?.amount ?? '')
+  const [memo, setMemo] = useState(preset?.memo ?? '')
+  const [days, setDays] = useState<number>(preset?.days ?? 30)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string>()
   const [url, setUrl] = useState<string>()
@@ -106,6 +110,7 @@ export function ReceivePage() {
           </>
         ) : (
           <>
+            {preset && <div className="-mt-4 mb-6"><PresetNote /></div>}
             <label htmlFor="rx-amount" className="label block">
               USDG to receive
             </label>

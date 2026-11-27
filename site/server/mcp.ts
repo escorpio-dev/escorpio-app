@@ -1,17 +1,22 @@
 // Escorpio's MCP server (Model Context Protocol, Streamable HTTP transport, stateless, JSON responses only).
-// Read-only: four tools over the same readings as /api. Nothing here can sign, send or hold anything.
+// Four reading tools over the same readings as /api, plus agent tools (server/agent.ts) that prepare a deposit, loan
+// action or payment request for the wallet owner to sign on escorpio.pro. Nothing here can sign, send or hold anything.
 // Spec: https://modelcontextprotocol.io/specification/2025-06-18/basic/transports
 import { OWN_NOTES, STOP_CODES, WARNING_TEXT, headlineVaults } from '../src/data/desk.ts'
 import type { Desk } from '../src/data/morpho.ts'
+import { AGENT_ARGS, AGENT_TOOLS, callAgentTool } from './agent.ts'
 import { about, marketOut, rates, vaultOut } from './api.ts'
 
 export const SUPPORTED_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05']
-const SERVER = { name: 'escorpio', title: 'Escorpio', version: '0.1.0', websiteUrl: 'https://escorpio.pro' }
+const SERVER = { name: 'escorpio', title: 'Escorpio', version: '0.2.0', websiteUrl: 'https://escorpio.pro' }
 const INSTRUCTIONS =
   'Escorpio reads live Morpho vault and loan rates for USDG on Robinhood Chain (chain 4663). Start with get_best_rates. ' +
   'Every vault and market carries plain-word risk notes; a note with stop=true is a reason not to use it right now, and no ' +
   'note does not mean safe. Quote the readAt time with any rate. These are readings, not advice: do not tell anyone a ' +
-  'rate is safe or guaranteed. To act, send people to https://escorpio.pro/earn or /borrow, where they sign with their own wallet.'
+  'rate is safe or guaranteed. To act, use the prepare_* tools: each one checks the request, can simulate it for a wallet ' +
+  'address, and returns open_url, a link to escorpio.pro with the form filled in. Only the wallet owner can sign there; ' +
+  'you cannot sign or send. Tell the person what they are about to sign (amount, vault or market, rate, risk notes, ' +
+  'liquidation price for loans) before giving the link. For invoices use prepare_payment_request, then check_payment.'
 
 const READ_ONLY = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true }
 const limit = { type: 'integer', minimum: 1, maximum: 100, description: 'Most rows to return (default 20).' }
@@ -62,6 +67,7 @@ export const TOOLS = [
     inputSchema: { type: 'object', properties: {}, additionalProperties: false },
     annotations: { title: 'What the risk notes mean', readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   },
+  ...AGENT_TOOLS,
 ]
 
 type Rpc = { jsonrpc?: string; id?: string | number | null; method?: unknown; params?: Record<string, unknown> }
@@ -87,11 +93,13 @@ export async function callTool(name: string, args: Record<string, unknown>, desk
     list_vaults: ['open_only', 'limit'],
     list_markets: ['collateral', 'limit'],
     explain_risk_notes: [],
+    ...AGENT_ARGS,
   }
   if (!(name in allowed)) throw Object.assign(new Error(`Unknown tool: ${name}`), { rpc: -32602 })
   const extra = Object.keys(args).filter((k) => !allowed[name].includes(k))
   if (extra.length) return { isError: true, content: [{ type: 'text', text: `Unknown argument(s) for ${name}: ${extra.join(', ')}` }] }
   if (name === 'explain_risk_notes') return result(riskNotes())
+  if (name in AGENT_ARGS) return callAgentTool(name, args, desk)
 
   const d = await desk()
   if (name === 'get_best_rates') return result(rates(d))
@@ -141,7 +149,12 @@ export async function handle(msg: Rpc, desk: () => Promise<Desk>): Promise<Out |
         } catch (e) {
           const code = (e as { rpc?: number }).rpc
           if (code) return err(id, code, (e as Error).message)
-          return ok(id, { isError: true, content: [{ type: 'text', text: `Could not read the Morpho API right now: ${(e as Error).message}` }] })
+          const msg = (e as { shortMessage?: string; details?: string }).details ?? (e as { shortMessage?: string }).shortMessage ?? (e as Error).message
+          const busy = /too many requests|rate limit|429/i.test(msg)
+          return ok(id, {
+            isError: true,
+            content: [{ type: 'text', text: busy ? 'The Robinhood Chain RPC is busy (too many requests). Try again in a few seconds.' : `Could not read Morpho or Robinhood Chain right now: ${msg}` }],
+          })
         }
       }
       case 'resources/list':
