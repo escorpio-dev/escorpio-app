@@ -1,10 +1,10 @@
 # Escorpio
 
-Escorpio is a USDG money desk on Robinhood Chain (chain id 4663). It shows where idle USDG earns the most in Morpho
-vaults and where USDG is cheapest to borrow against stock tokens, then lets you deposit, withdraw, borrow and repay
-from your own wallet. Every step is simulated on chain before you sign, and approvals are for the exact amount.
+Escorpio is a USDG money desk on Robinhood Chain (chain id 4663). It makes signed USDG payment links, shows where
+idle USDG earns the most in Morpho vaults and where USDG is cheapest to borrow against stock tokens, then lets you
+pay, deposit, withdraw, borrow and repay from your own wallet. Every step is simulated on chain before you sign, and approvals are for the exact amount.
 
-[Website](https://escorpio.pro) · [Earn](https://escorpio.pro/earn) · [Borrow](https://escorpio.pro/borrow) · [Method](https://escorpio.pro/method)
+[Website](https://escorpio.pro) · [Earn](https://escorpio.pro/earn) · [Borrow](https://escorpio.pro/borrow) · [Receive](https://escorpio.pro/receive) · [Method](https://escorpio.pro/method)
 
 > Escorpio never holds your money and has no smart contract of its own: transactions go from your wallet straight to
 > the Morpho vault or market. Rates change every block, vault shares can lose value, and a loan can be liquidated.
@@ -17,10 +17,12 @@ from your own wallet. Every step is simulated on chain before you sign, and appr
 | Home | How much a typed amount of USDG would earn in a year at today's best open vault rate; the biggest vaults and the cheapest loan per collateral | Jump to Earn or Borrow |
 | Earn | Every Morpho vault that holds real USDG (matched by contract address), its net rate after fees, what can be withdrawn now, and its risk notes | Deposit and withdraw |
 | Borrow | Every USDG loan market per collateral token: borrow rate, liquidation line, what is still available | Put collateral in, borrow, repay, take collateral back |
+| Receive | A form for the amount, an optional memo and how long the link works | Sign a payment request with your wallet and share the link |
+| Pay | The request from a link, whether the payee's signature matches it, your USDG balance and a simulation | Pay it from your wallet straight to the payee |
+| Receipt | A payment read from the chain: status, time, sender, every USDG transfer, and whether it paid the request | Open it on Blockscout |
 | Method | Where every number comes from and what each risk note means | |
 
-Receive (USDG payment links and invoices) and Pay out (payroll from a pasted list) are next. They are not shown on
-the site as features until they work.
+Pay out (payroll from a pasted list) is next. It is not shown on the site as a feature until it works.
 
 ## How it works
 
@@ -45,6 +47,13 @@ browser ──► Escorpio API /api/desk ──► Morpho API (rates, vaults, ma
 - **Risk notes.** Morpho's own warnings plus Escorpio's: small vault or market, under 30 days old, almost nothing
   withdrawable, no named curator, very high or negative rate, almost fully borrowed. Some notes block deposits until
   they clear. Full list on the [Method page](https://escorpio.pro/method).
+
+- **Payment links without a database.** A request (payee, USDG, amount, memo, an 8-byte reference, expiry) is signed
+  by the payee's wallet as EIP-712 typed data: a signature, not a transaction, so it costs nothing. The link carries
+  the request and the signature. The pay page checks the signature (smart-contract wallets too, through ERC-1271) and
+  refuses a link where anything was changed. The payer sends a plain USDG `transfer` with `ESC1` and the reference
+  appended to the calldata (ERC-20 ignores trailing bytes), so the receipt page can show which request a transfer
+  paid. Nothing about links or payments is stored anywhere.
 
 Contracts used: USDG `0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168`, Morpho Blue
 `0x9D53d5E3bd5E8d4Cbfa6DB1ca238AEA02E651010`, and the Morpho vaults listed on the Earn page.
@@ -103,14 +112,15 @@ None of these move money. They run against the real contracts on Robinhood Chain
 overrides to give a made-up address balances, approvals, collateral or debt.
 
 ```bash
-npm test                # all four below, in order
+npm test                # everything below, in order
 npm run check           # desk logic on hand-made rows, then a live read of the Morpho API
 npm run check:mcp       # MCP handshake, tool list, every tool on a live read, error paths
 npm run check:deposit   # deposit 100 USDG into every open vault; refused when the approval is 1 unit short; withdraw all
 npm run check:borrow    # per open market: borrow 100 USDG, refused past the limit, repay all, take collateral back, put collateral in
+npm run check:receive   # sign a request with a throwaway key, link round trip, tampered links refused, expiry, pay with the reference, read a real receipt
 ```
 
-GitHub Actions runs the build and all three checks on every pull request and on main
+GitHub Actions runs the build and `npm test` on every pull request and on main
 ([.github/workflows/ci.yml](.github/workflows/ci.yml)).
 
 Every row from the Morpho API is checked before it reaches the page: a market with a malformed id, a bad address, a
@@ -128,8 +138,9 @@ site/
   src/lib/vault-tx.ts     vault reads and simulations
   src/lib/loan-tx.ts      Morpho Blue reads, loan math and simulations
   src/lib/use-tx.ts       simulate, sign, wait, refresh: one step
+  src/lib/receive.ts      payment requests: EIP-712 signing, link format, payment simulation, receipts
   src/components/         dialogs, rate rows, tables, header and footer
-  src/pages/              Home, Earn, Borrow, Method
+  src/pages/              Home, Earn, Borrow, Receive, Pay, Receipt, Method
   scripts/                the checks above
   public/_headers         security headers and content security policy for Cloudflare Pages
 ```

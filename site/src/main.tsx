@@ -14,12 +14,18 @@ import { AlertsPage } from '@/pages/alerts-page'
 import { DocsPage } from '@/pages/docs-page'
 import { StatsPage } from '@/pages/stats-page'
 import { TokenPage } from '@/pages/token-page'
+import { ReceivePage } from '@/pages/receive-page'
+import { PayPage } from '@/pages/pay-page'
+import { ReceiptPage } from '@/pages/receipt-page'
 import { TOKEN_LIVE } from '@/data/token'
 
 const TITLES: Record<string, string> = {
   '/': 'Escorpio · the USDG desk on Robinhood Chain',
   '/earn': 'Earn · USDG vault rates · Escorpio',
   '/borrow': 'Borrow · USDG loan rates · Escorpio',
+  '/receive': 'Receive · USDG payment links · Escorpio',
+  '/pay': 'Pay a USDG request · Escorpio',
+  '/receipt': 'Receipt · read from Robinhood Chain · Escorpio',
   '/method': 'Method · Escorpio',
   '/link': 'Link your wallet · Escorpio alerts',
   '/stats': 'Stats · site traffic · Escorpio',
@@ -62,6 +68,9 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/" element={<HomePage />} />
           <Route path="/earn" element={<EarnPage />} />
           <Route path="/borrow" element={<BorrowPage />} />
+          <Route path="/receive" element={<ReceivePage />} />
+          <Route path="/pay" element={<PayPage />} />
+          <Route path="/receipt" element={<ReceiptPage />} />
           <Route path="/method" element={<MethodPage />} />
           <Route path="/link" element={<LinkPage />} />
           <Route path="/stats" element={<StatsPage />} />

@@ -10,9 +10,10 @@
     "check": "node scripts/check-desk.ts",
     "check:deposit": "node scripts/check-deposit.ts",
     "check:borrow": "node scripts/check-borrow.ts",
-    "test": "npm run check && npm run check:mcp && npm run check:deposit && npm run check:borrow && npm run check:stats && echo 'all tests passed: desk, mcp, deposit, borrow, stats'",
+    "test": "npm run check && npm run check:mcp && npm run check:deposit && npm run check:borrow && npm run check:stats && npm run check:receive && echo 'all tests passed: desk, mcp, deposit, borrow, stats, receive'",
     "preview:pages": "npx wrangler pages dev dist --port 4401 --compatibility-date 2026-11-01",
     "check:mcp": "node scripts/check-mcp.ts",
+    "check:receive": "node scripts/check-receive.ts",
     "check:stats": "node scripts/check-stats.ts"
   },
   "dependencies": {

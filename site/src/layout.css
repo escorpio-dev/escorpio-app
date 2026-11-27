@@ -380,8 +380,8 @@
 /* Phones: four links at most (see site-nav.tsx). */
 @media (max-width: 599px) {
   .header ul li.k-social { display: none; }
-  .header ul li.k-nav-method, .header ul li.k-nav-stats { display: none; }
-  .header ul.has-token li.k-nav-docs { display: none; }
+  .header ul li.k-nav-method, .header ul li.k-nav-stats, .header ul li.k-nav-docs { display: none; }
+  .header ul.has-token li.k-nav-alerts { display: none; }
   .header ul li { margin-left: 14px; }
   .header ul a { font-size: 15px; }
 }

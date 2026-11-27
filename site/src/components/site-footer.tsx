@@ -29,6 +29,7 @@ export function SiteFooter() {
             <li><Link to="/">Home</Link></li>
             <li><Link to="/earn">Earn</Link></li>
             <li><Link to="/borrow">Borrow</Link></li>
+            <li><Link to="/receive">Receive</Link></li>
             <li><Link to="/alerts">Alerts</Link></li>
             <li><Link to="/method">Method</Link></li>
             <li><Link to="/stats">Stats</Link></li>

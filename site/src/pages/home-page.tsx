@@ -262,11 +262,11 @@ function Features() {
   const flagged = desk ? desk.vaults.filter((v) => vaultNotes(v, now).some((n) => n.stop)).length : 0
   const list: Feature[] = [
     {
-      t: 'Compare every rate',
-      d: 'Every USDG vault and lending market on Robinhood Chain in one place, read from Morpho every minute.',
-      img: 'feat-compare',
-      to: '/earn',
-      stat: desk ? `${desk.markets.length} markets, ${desk.vaults.length} vaults` : undefined,
+      t: 'Receive with a link',
+      d: 'Sign a USDG payment request with your wallet and send the link. The payer pays you directly, and both get a receipt read from the chain.',
+      img: 'feat-receive',
+      to: '/receive',
+      stat: 'Make a link',
     },
     {
       t: 'Park idle USDG',
@@ -292,7 +292,6 @@ function Features() {
   ]
   // Roadmap: not live. Shown under its own label, greyed, with no link and no number.
   const next: Feature[] = [
-    { t: 'Receive with a link', d: 'Signed USDG payment links and invoices, each with a receipt read from the chain.', img: 'feat-receive' },
     { t: 'Pay out', d: 'Payroll from a pasted list of addresses and amounts, checked line by line before one signature.', img: 'feat-payout' },
   ]
   return (
