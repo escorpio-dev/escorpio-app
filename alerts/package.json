@@ -7,6 +7,6 @@
     "deploy": "npx wrangler deploy"
   },
   "dependencies": {
-    "viem": "2.58.1"
+    "viem": "2.58.6"
   }
 }
