@@ -50,7 +50,7 @@ export function parseCommand(text: string): Command {
   const [raw = '', ...args] = text.trim().split(/\s+/)
   const cmd = raw.toLowerCase().replace(/@.*$/, '') // "/vault@EscorpioAlertsBot" in groups
   const num = (s?: string) => {
-    const n = Number((s ?? '').replace(',', '.').replace('%', ''))
+    const n = Number((s ?? '').replace(/,/g, '.').replace(/%/g, ''))
     return Number.isFinite(n) ? n : NaN
   }
   if (cmd === '/start' || cmd === '/help') return { cmd: 'help' }
