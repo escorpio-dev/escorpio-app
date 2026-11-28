@@ -37,6 +37,9 @@ const desk = parseDesk(answer, now - 30_000)
 // Commands.
 assert.deepEqual(parseCommand('/vault 5'), { cmd: 'add', kind: 'vault', target: '*', threshold: 0.05 })
 assert.deepEqual(parseCommand('/vault@EscorpioAlertsBot 4,5%'), { cmd: 'add', kind: 'vault', target: '*', threshold: 0.045 })
+// Every comma and percent sign is handled, not just the first (CodeQL js/incomplete-sanitization).
+assert.deepEqual(parseCommand('/vault 4,5%%'), { cmd: 'add', kind: 'vault', target: '*', threshold: 0.045 })
+assert.equal(parseCommand('/vault 5,5,5').cmd, 'error')
 assert.deepEqual(parseCommand('/borrow nvda 2'), { cmd: 'add', kind: 'borrow', target: 'NVDA', threshold: 0.02 })
 assert.equal(parseCommand('/borrow NVDA').cmd, 'error')
 assert.equal(parseCommand('/vault 0').cmd, 'error')
