@@ -15,6 +15,10 @@ updates:
       site-security:
         applies-to: security-updates
         patterns: ['*']
+    ignore:
+      # Types follow the Node version CI runs (24 in ci.yml); move both together by hand.
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
   - package-ecosystem: npm
     directory: /alerts
     schedule: { interval: weekly }
