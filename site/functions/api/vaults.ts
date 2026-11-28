@@ -8,7 +8,7 @@ export async function onRequestGet(ctx: Ctx) {
     const d = await readDesk(ctx)
     const open = new URL(ctx.request.url).searchParams.get('open') === '1'
     const list = open ? headlineVaults(d) : [...d.vaults].sort((a, b) => b.netApy - a.netApy)
-    return json({ ...about(d), filter: open ? 'open' : 'all', count: list.length, vaults: list.map((v) => vaultOut(v, d.readAt)) })
+    return json({ ...about(d), filter: open ? 'open' : 'all', count: list.length, vaults: list.map((v) => vaultOut(v, d.readAt, d.chain)) })
   } catch (e) {
     return failed(e)
   }

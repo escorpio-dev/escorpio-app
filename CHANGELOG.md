@@ -4,6 +4,11 @@ All notable changes to Escorpio. Versions follow [Semantic Versioning](https://s
 
 ## [Unreleased]
 
+### Added
+- Vault sizes checked on Robinhood Chain: the API reads each vault's `asset()` and `totalAssets()` and compares them
+  with Morpho's numbers (`checkedOnChain`, `onChain`).
+- Prepare tools say that any address holding USDG can be used to simulate a plan, so checking needs no funds.
+
 ## [0.1.0] - 2026-11-27
 
 First release: the USDG desk on Robinhood Chain (chain 4663), for people and their AI agents.

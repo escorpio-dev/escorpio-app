@@ -93,7 +93,7 @@ export function DocsPage() {
           <p className="mt-4 text-sm text-muted">
             Every answer carries <code>readAt</code>. Rates are percent per year, money is US dollars. A prepare tool given
             a <code>wallet</code> reads that wallet and simulates the whole plan on chain (no transaction); the address is
-            not stored. Its <code>open_url</code> opens the page filled in, which reads the wallet again and simulates again
+            not stored. Any address that holds USDG works, so a checker needs no funds or key of their own. Its <code>open_url</code> opens the page filled in, which reads the wallet again and simulates again
             before the owner signs.
           </p>
         </Block>

@@ -4,9 +4,8 @@
 // Spec: https://modelcontextprotocol.io/specification/2025-06-18/basic/transports
 import { OWN_NOTES, STOP_CODES, WARNING_TEXT, headlineVaults } from '../src/data/desk.ts'
 import type { PublicClient } from 'viem'
-import type { Desk } from '../src/data/morpho.ts'
 import { AGENT_ARGS, AGENT_TOOLS, callAgentTool } from './agent.ts'
-import { about, marketOut, rates, vaultOut } from './api.ts'
+import { about, marketOut, rates, vaultOut, type ServerDesk } from './api.ts'
 
 export const SUPPORTED_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05']
 const SERVER = { name: 'escorpio', title: 'Escorpio', version: '0.2.0', websiteUrl: 'https://escorpio.pro' }
@@ -88,7 +87,7 @@ function riskNotes() {
 }
 
 /** Runs one tool. Unknown arguments are rejected by name so a model sees its mistake. */
-export async function callTool(name: string, args: Record<string, unknown>, desk: () => Promise<Desk>, pc?: PublicClient) {
+export async function callTool(name: string, args: Record<string, unknown>, desk: () => Promise<ServerDesk>, pc?: PublicClient) {
   const allowed: Record<string, string[]> = {
     get_best_rates: [],
     list_vaults: ['open_only', 'limit'],
@@ -108,7 +107,7 @@ export async function callTool(name: string, args: Record<string, unknown>, desk
     const open = args.open_only === true
     const list = open ? headlineVaults(d) : [...d.vaults].sort((a, b) => b.netApy - a.netApy)
     const n = clamp(args.limit)
-    return result({ ...about(d), filter: open ? 'open' : 'all', total: list.length, vaults: list.slice(0, n).map((v) => vaultOut(v, d.readAt)) })
+    return result({ ...about(d), filter: open ? 'open' : 'all', total: list.length, vaults: list.slice(0, n).map((v) => vaultOut(v, d.readAt, d.chain)) })
   }
   const q = typeof args.collateral === 'string' ? args.collateral.trim().toLowerCase().slice(0, 64) : ''
   const list = d.markets
@@ -122,7 +121,7 @@ const result = (data: Record<string, unknown>) => ({ content: [{ type: 'text', t
 
 /** Handles one JSON-RPC message. Returns undefined for notifications (no reply). */
 /** pc: the chain client for the agent tools (server/rpc.ts); the public client when left out. */
-export async function handle(msg: Rpc, desk: () => Promise<Desk>, pc?: PublicClient): Promise<Out | undefined> {
+export async function handle(msg: Rpc, desk: () => Promise<ServerDesk>, pc?: PublicClient): Promise<Out | undefined> {
   if (!msg || typeof msg !== 'object' || msg.jsonrpc !== '2.0' || typeof msg.method !== 'string') return err(msg?.id, -32600, 'Invalid request')
   const isNotification = !('id' in msg) || msg.id === undefined
   if (isNotification) return undefined

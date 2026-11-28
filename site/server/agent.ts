@@ -6,14 +6,13 @@
 // owner's signature. The wallet address is used for the reads and is not stored or counted (server/usage.ts).
 import { isAddress, isHash, type Address, type Hash, type Hex, type PublicClient } from 'viem'
 import { marketNotes, vaultNotes } from '../src/data/desk.ts'
-import type { Desk } from '../src/data/morpho.ts'
 import { isAmount, loanLink, receiveLink, vaultLink } from '../src/lib/action-link.ts'
 import { publicClient } from '../src/lib/chain.ts'
 import { liquidationPrice, loanAfter, loanBlock, loanCapRoom, loanPlan, readLoan, simulateLoanPlan, type LoanMode } from '../src/lib/loan-tx.ts'
 import { MEMO_MAX, expired, fromQuery, matches, readReceipt, verifyRequest } from '../src/lib/receive.ts'
 import { showUnits, toUnits } from '../src/lib/units.ts'
 import { USDG_DECIMALS, readPosition, simulateVaultPlan, vaultBlock, vaultSteps, type VaultMode } from '../src/lib/vault-tx.ts'
-import { about, marketOut, vaultOut } from './api.ts'
+import { about, marketOut, vaultOut, type ServerDesk } from './api.ts'
 
 type Args = Record<string, unknown>
 export type ToolOut = { isError?: boolean; content: { type: 'text'; text: string }[]; structuredContent?: Record<string, unknown> }
@@ -39,6 +38,9 @@ const withoutChain = (out: Record<string, unknown>, e: unknown, summary: string)
   done({ ...out, simulation: { passed: null, why: NO_CHAIN }, chainError: chainError(e), summary: `${summary} Not simulated by Escorpio's server (Robinhood Chain RPC did not answer); the page simulates before signing.` })
 
 const PREPARE = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true }
+// Without a wallet a checker could think the simulation needs a funded wallet of their own. It does not: any address
+// that holds USDG works, because the simulation is a read (eth_call) as that address and nothing is signed.
+const TRY_WALLET = 'Any address that holds USDG works as wallet, no key or funds of your own: the simulation is a read-only eth_call as that address and nothing is signed.'
 const wallet = { type: 'string', pattern: '^0x[0-9a-fA-F]{40}$', description: 'Optional. The wallet that will sign. With it the tool reads its balances and simulates the whole plan on chain (no transaction). Not stored.' }
 const usdgAmount = (d: string) => ({ type: 'string', pattern: '^\\d{1,15}(\\.\\d{1,6})?$', description: d })
 
@@ -156,7 +158,7 @@ function readWallet(args: Args): { ok: true; wallet?: Address } | { ok: false; w
   return isAddress(w) ? { ok: true, wallet: w } : { ok: false, why: 'wallet must be a 0x address (40 hex characters).' }
 }
 
-async function vaultTool(name: 'prepare_deposit' | 'prepare_withdraw', args: Args, d: Desk, pc: PublicClient): Promise<ToolOut> {
+async function vaultTool(name: 'prepare_deposit' | 'prepare_withdraw', args: Args, d: ServerDesk, pc: PublicClient): Promise<ToolOut> {
   const mode: VaultMode = name === 'prepare_deposit' ? 'deposit' : 'withdraw'
   const address = str(args.vault)
   const raw = str(args.amount_usdg)
@@ -174,11 +176,11 @@ async function vaultTool(name: 'prepare_deposit' | 'prepare_withdraw', args: Arg
     action: mode,
     open_url: vaultLink({ vault: vault.address as Address, action: mode, amount: raw }),
     signing: SIGN,
-    vault: vaultOut(vault, d.readAt),
+    vault: vaultOut(vault, d.readAt, d.chain),
   }
   if (!all && toUnits(raw, USDG_DECIMALS) === 0n) return fail('amount_usdg must be more than 0.')
   const plain = `${mode === 'deposit' ? 'Deposit' : 'Withdraw'} ${all ? 'everything' : `${raw} USDG`} ${mode === 'deposit' ? 'into' : 'from'} ${vault.name}.`
-  if (!w.wallet) return done({ ...out, summary: `${plain} Pass wallet to see the steps and simulate it.` })
+  if (!w.wallet) return done({ ...out, summary: `${plain} Pass wallet to see the steps (with the exact-amount approval) and simulate it. ${TRY_WALLET}` })
   let pos
   try {
     pos = await readPosition(pc, w.wallet, vault.address as Address)
@@ -204,7 +206,7 @@ async function vaultTool(name: 'prepare_deposit' | 'prepare_withdraw', args: Arg
   return done(out)
 }
 
-async function loanTool(name: 'prepare_borrow' | 'prepare_repay' | 'prepare_collateral_withdraw', args: Args, d: Desk, pc: PublicClient): Promise<ToolOut> {
+async function loanTool(name: 'prepare_borrow' | 'prepare_repay' | 'prepare_collateral_withdraw', args: Args, d: ServerDesk, pc: PublicClient): Promise<ToolOut> {
   const mode: LoanMode = name === 'prepare_borrow' ? 'borrow' : name === 'prepare_repay' ? 'repay' : 'collateral'
   const id = str(args.market_id).toLowerCase()
   const w = readWallet(args)
@@ -238,7 +240,7 @@ async function loanTool(name: 'prepare_borrow' | 'prepare_repay' | 'prepare_coll
   else what = `take back ${rawColl} ${symbol}`
   const What = what[0].toUpperCase() + what.slice(1)
   const plain = `${What} on the ${symbol} market.`
-  if (!w.wallet) return done({ ...out, summary: `${plain} Pass wallet to check the loan limit, see the steps and simulate it.` })
+  if (!w.wallet) return done({ ...out, summary: `${plain} Pass wallet to check the loan limit, see the steps and simulate it. ${TRY_WALLET}` })
 
   // The wallet's loan, the market's parameters, token decimals and oracle price come from the chain.
   let loan
@@ -348,7 +350,7 @@ async function checkPaymentTool(args: Args, pc: PublicClient): Promise<ToolOut> 
 }
 
 /** Runs one agent tool. The client is injectable so checks can use their own. */
-export async function callAgentTool(name: string, args: Args, desk: () => Promise<Desk>, pc: PublicClient = publicClient): Promise<ToolOut> {
+export async function callAgentTool(name: string, args: Args, desk: () => Promise<ServerDesk>, pc: PublicClient = publicClient): Promise<ToolOut> {
   if (name === 'prepare_payment_request') return paymentRequestTool(args)
   if (name === 'check_payment') return checkPaymentTool(args, pc)
   const d = await desk()

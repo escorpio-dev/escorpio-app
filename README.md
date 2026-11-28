@@ -30,6 +30,7 @@ Pay out (payroll from a pasted list) is next. It is not shown on the site as a f
 
 ```
 browser ──► Escorpio API /api/desk ──► Morpho API (rates, vaults, markets, risk warnings), at most once a minute
+                                    ──► Robinhood Chain (each vault's asset() and totalAssets(), to check Morpho's sizes)
         ──► Robinhood Chain RPC (your balances, simulations, receipts)
         ──► your wallet (EIP-6963) ──► Morpho vault / Morpho Blue
 ```
@@ -38,6 +39,10 @@ browser ──► Escorpio API /api/desk ──► Morpho API (rates, vaults, ma
   the public Morpho API once a minute and pass its answer through unchanged. Your browser checks every row itself, and
   falls back to Morpho directly if our API does not answer. Wallet reads and transactions go straight to the public
   Robinhood Chain RPC.
+- **Two sources for vault sizes.** The API also reads each vault contract on Robinhood Chain (`asset()`,
+  `totalAssets()`) and compares it with Morpho's size. Every answer carries `checkedOnChain` (how many vaults were read
+  and agree), each vault row an `onChain` field. If the chain does not answer, the API still answers and says
+  `checked: false`.
 - **Simulated first.** Each step runs as an `eth_call` before the wallet opens. A deposit that still needs its
   approval, or a borrow before the collateral is in, is simulated with state overrides as if the earlier step were
   done, so you see whether the whole flow would pass before signing anything. Each step is simulated again, without
@@ -135,6 +140,7 @@ npm run check:mcp       # MCP handshake, tool list, every tool on a live read, e
 npm run check:deposit   # deposit 100 USDG into every open vault; refused when the approval is 1 unit short; withdraw all
 npm run check:borrow    # per open market: borrow 100 USDG, refused past the limit, repay all, take collateral back, put collateral in
 npm run check:agent     # every agent tool on live data: links, refusals, an empty wallet blocked, a real holder's deposit simulated, loan limits, payment checks
+npm run check:onchain   # vault sizes read on chain agree with Morpho, an inflated size is flagged, an outage says checked: false
 npm run check:receive   # sign a request with a throwaway key, link round trip, tampered links refused, expiry, pay with the reference, read a real receipt
 ```
 

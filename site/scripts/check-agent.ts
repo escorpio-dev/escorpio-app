@@ -54,7 +54,7 @@ assert.equal(broke.simulation, undefined, 'simulated a blocked deposit')
 
 // A plain wallet that holds USDG and ETH right now, found from recent USDG transfers.
 const head = await pc.getBlockNumber()
-const logs = await pc.getLogs({ address: USDG as Address, event: parseAbiItem('event Transfer(address indexed from, address indexed to, uint256 value)'), fromBlock: head - 2_000n, toBlock: head })
+const logs = await pc.getLogs({ address: USDG as Address, event: parseAbiItem('event Transfer(address indexed from, address indexed to, uint256 value)'), fromBlock: head - 500n, toBlock: head }) // 500 blocks: a busy USDG passes the 10,000-log cap in a few thousand
 let holder: Address | undefined
 const seen = new Set<string>()
 for (const l of logs.reverse()) {

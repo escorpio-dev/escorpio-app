@@ -30,6 +30,12 @@ export function MethodPage() {
             every 60 seconds while the tab is open, and checks every row before showing it. If our API does not answer, your
             browser asks Morpho directly. Morpho's own numbers can lag the chain by a short while.
           </p>
+          <p className="mt-4">
+            Vault sizes are also read a second way: our API asks each vault contract on Robinhood Chain for its asset and its
+            total (<code className="num text-[0.9em]">asset()</code> and <code className="num text-[0.9em]">totalAssets()</code>)
+            and compares that with Morpho's number. Every answer from the API carries the result as{' '}
+            <code className="num text-[0.9em]">checkedOnChain</code>, and each vault row as <code className="num text-[0.9em]">onChain</code>.
+          </p>
         </Block>
         <Block title="Check it yourself">
           <p className="mb-4">
@@ -59,7 +65,9 @@ export function MethodPage() {
             <a href={`${CODE}/blob/main/site/src/data/morpho.ts`} target="_blank" rel="noopener noreferrer" className="accent-link">
               morpho.ts
             </a>
-            . Every deposit and loan step is simulated against the real contracts on each change to the code (
+            . You can also run a deposit or loan simulation yourself without funds: give the MCP prepare tools any address that
+            holds USDG as <code className="num text-[0.9em]">wallet</code>. It is a read as that address, nothing is signed. Every
+            deposit and loan step is simulated against the real contracts on each change to the code (
             <a href={`${CODE}/actions`} target="_blank" rel="noopener noreferrer" className="accent-link">
               test runs
             </a>
