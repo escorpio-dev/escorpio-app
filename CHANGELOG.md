@@ -4,6 +4,9 @@ All notable changes to Escorpio. Versions follow [Semantic Versioning](https://s
 
 ## [Unreleased]
 
+### Changed
+- Vault rate alerts show the vault's short address next to its name, since two vaults can share a name.
+
 ### Added
 - Vault sizes checked on Robinhood Chain: the API reads each vault's `asset()` and `totalAssets()` and compares them
   with Morpho's numbers (`checkedOnChain`, `onChain`).

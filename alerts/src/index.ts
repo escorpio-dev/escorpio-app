@@ -11,7 +11,7 @@ import { isAddress, isHex, type Address, type Hex } from 'viem'
 import { parseDesk, type Desk } from '../../site/src/data/morpho.ts'
 import { digest, type Snapshot } from './digest.ts'
 import { LINK_TTL_MS, getChain, holdersOn, isCode, linkMessage, newCode, tierFor, type HolderEnv } from './holder.ts'
-import { HELP, LIMITS, check, describe, isDue, parseCommand, type Alert, type Tier } from './logic.ts'
+import { HELP, LIMITS, check, describe, isDue, parseCommand, short, type Alert, type Tier } from './logic.ts'
 
 type D1Result<T> = { results: T[] }
 type D1Stmt = { bind(...v: unknown[]): D1Stmt; all<T>(): Promise<D1Result<T>>; first<T>(): Promise<T | null>; run(): Promise<unknown> }
@@ -21,7 +21,6 @@ type Ctx = { waitUntil(p: Promise<unknown>): void }
 type Chat = { chat_id: string; tier: Tier; wallet: string | null; checked_at: number }
 
 const SITE = 'https://escorpio.pro'
-const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`
 
 async function send(env: Env, chatId: string, text: string) {
   const r = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
