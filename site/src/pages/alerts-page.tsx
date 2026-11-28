@@ -6,6 +6,7 @@ import { PerksTable } from '@/components/token-bits'
 import { ALERTS_BOT } from '@/data/alerts-link'
 import { headlineVaults, vaultNotes } from '@/data/desk'
 import { TOKEN_LIVE } from '@/data/token'
+import { shortAddress } from '@/lib/chain'
 import { pct, usd } from '@/lib/format'
 import { useDesk } from '@/lib/use-desk'
 
@@ -34,7 +35,7 @@ export function AlertsPage() {
   // The same text the bot sends for /vault, built from this minute's reading (alerts/src/logic.ts check()).
   const example = best && desk
     ? [
-        `${best.name} pays ${pct(best.netApy)} a year after fees (your alert: ${pct(Math.floor(best.netApy * 100) / 100)} or more).`,
+        `${best.name} (${shortAddress(best.address)}) pays ${pct(best.netApy)} a year after fees (your alert: ${pct(Math.floor(best.netApy * 100) / 100)} or more).`,
         `Vault size ${usd(best.totalUsd)}, ${usd(best.withdrawableUsd)} withdrawable now.`,
         ...(vaultNotes(best, desk.readAt).length ? ['Notes:', ...vaultNotes(best, desk.readAt).map((n) => `- ${n.text}`)] : []),
         `Read from Morpho at ${hhmm(desk.readAt)}. A reading, not advice: rates change every block.`,

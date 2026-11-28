@@ -78,6 +78,9 @@ export function parseCommand(text: string): Command {
   return { cmd: 'error', text: 'Unknown command. Send /help.' }
 }
 
+/** 0x9e3a…aACE: enough to tell two contracts with the same name or symbol apart. */
+export const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`
+
 export const describe = (a: Pick<Alert, 'kind' | 'target' | 'threshold'>) =>
   a.kind === 'vault' ? `open USDG vault at ${pct(a.threshold)} or more` : `USDG loan against ${a.target} at ${pct(a.threshold)} or less`
 
@@ -100,7 +103,8 @@ export function check(a: Pick<Alert, 'kind' | 'target' | 'threshold'>, d: Desk, 
     if (!v) return null
     const notes = vaultNotes(v, d.readAt).map((n) => `- ${n.text}`)
     return [
-      `${v.name} pays ${pct(v.netApy)} a year after fees (your alert: ${pct(a.threshold)} or more).`,
+      // Vault names are free text and repeat (two "MEV Capital USDG" today), so the address always goes with the name.
+      `${v.name} (${short(v.address)}) pays ${pct(v.netApy)} a year after fees (your alert: ${pct(a.threshold)} or more).`,
       `Vault size ${usd(v.totalUsd)}, ${usd(v.withdrawableUsd)} withdrawable now.`,
       ...(notes.length ? ['Notes:', ...notes] : []),
       read,
@@ -113,7 +117,7 @@ export function check(a: Pick<Alert, 'kind' | 'target' | 'threshold'>, d: Desk, 
   if (!hit) return null
   const m = hit.m!
   const notes = marketNotes(m, d.readAt).map((n) => `- ${n.text}`)
-  const shared = groups.length > 1 ? ` (contract ${hit.g.address.slice(0, 6)}…${hit.g.address.slice(-4)}; other tokens use the same symbol)` : ''
+  const shared = groups.length > 1 ? ` (contract ${short(hit.g.address)}; other tokens use the same symbol)` : ''
   return [
     `Borrowing USDG against ${hit.g.symbol}${shared} costs ${pct(m.borrowApy)} a year (your alert: ${pct(a.threshold)} or less).`,
     `Liquidation at ${pct(m.lltv)} of the collateral value, ${usd(m.availableUsd)} free to borrow now.`,

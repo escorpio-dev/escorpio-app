@@ -50,7 +50,7 @@ assert.equal(parseCommand('hello').cmd, 'error')
 
 // Matching: the closed 9% vault never counts; 5.2% is a $67k vault and the message says so.
 const v5 = check({ kind: 'vault', target: '*', threshold: 0.05 }, desk, now)!
-assert.match(v5, /Small pays 5\.20% a year after fees/)
+assert.match(v5, /^Small \(0x0000…000\d\) pays 5\.20% a year after fees/, 'vault name comes with its short address')
 assert.match(v5, /Vault size \$67\.0k/)
 assert.match(v5, /not advice/)
 assert.doesNotMatch(v5, /safe|guarantee|deposit now/i)
